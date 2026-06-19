@@ -1,0 +1,13 @@
+AGENTS.md
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+*.nvda-addon
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+
