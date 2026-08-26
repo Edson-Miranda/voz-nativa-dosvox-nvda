@@ -58,8 +58,11 @@ Configurações, Fala, Sintetizador.
 - sistema e voz de origem: Projeto DOSVOX, desenvolvido no NCE/UFRJ a partir
   de 1993.
 
-Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md). A utilização e
-redistribuição dos áudios e dados do DOSVOX neste complemento foram autorizadas
-por Antônio Borges, conforme permissão confirmada pelo mantenedor Edson Miranda.
+Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md). Com base em
+manifestações anteriores na lista VoxTec, o mantenedor entendeu que não havia
+objeção ao uso e à redistribuição desses materiais com a devida atribuição.
+Como o complemento foi enviado para avaliação na loja oficial de complementos
+do NVDA, foi solicitada em 26 de agosto de 2026 uma confirmação expressa dessa
+autorização a Antônio Borges.
 
 Para colaborar com o desenvolvimento, consulte [CONTRIBUTING.md](CONTRIBUTING.md).
