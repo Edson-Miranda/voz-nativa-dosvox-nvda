@@ -5,10 +5,15 @@ GNU General Public License, versão 2.0 apenas (GPL-2.0-only), por ser um
 complemento que utiliza a API do NVDA.
 
 Os bancos `.dif`/`.ind`, regras, exceções, dicionários e arquivos `.wav` têm
-origem no Projeto DOSVOX. A redistribuição desses materiais como parte deste
-complemento foi autorizada por Antônio Borges, conforme permissão comunicada ao
-mantenedor Edson Miranda e confirmada por ele em 26 de agosto de 2026.
+origem no Projeto DOSVOX e não são automaticamente abrangidos pela GPL aplicada
+ao código original desta adaptação.
 
-Essa autorização de redistribuição não altera a titularidade dos materiais do
-DOSVOX nem os coloca automaticamente sob a GPL. O aviso de origem deve ser
-preservado nas cópias deste complemento.
+Com base em manifestações anteriores na lista VoxTec, o mantenedor entendeu
+que não havia objeção à redistribuição desses materiais com a devida
+atribuição. Em 26 de agosto de 2026, foi solicitada a Antônio Borges uma
+confirmação expressa dessa autorização, em razão do envio do complemento para
+avaliação na loja oficial de complementos do NVDA.
+
+A titularidade dos materiais provenientes do DOSVOX permanece com seus
+respectivos titulares. O aviso de origem deve ser preservado nas cópias deste
+complemento.
