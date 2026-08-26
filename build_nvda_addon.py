@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import pathlib
+import re
 import zipfile
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DIST = ROOT / "dist"
-OUTPUT = DIST / "voz_nativa_do_dosvox-0.2.2.nvda-addon"
+
+
+def manifest_value(field: str) -> str:
+    manifest = (ROOT / "manifest.ini").read_text(encoding="utf-8")
+    match = re.search(rf"(?m)^{re.escape(field)}\s*=\s*[\"']?([^\"'\r\n]+)", manifest)
+    if not match:
+        raise RuntimeError(f"Campo {field!r} não encontrado no manifest.ini")
+    return match.group(1).strip()
+
+
+OUTPUT = DIST / f"voz_nativa_do_dosvox-{manifest_value('version')}.nvda-addon"
 
 
 def iter_files():
@@ -44,6 +55,7 @@ def main():
     with zipfile.ZipFile(OUTPUT, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path, archive_name in iter_files():
             archive.write(path, archive_name)
+    print(OUTPUT)
 
 
 if __name__ == "__main__":

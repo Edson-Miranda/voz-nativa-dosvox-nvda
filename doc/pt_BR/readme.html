@@ -2,39 +2,32 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Voz nativa do dosvox</title>
+  <title>Voz nativa do DOSVOX</title>
 </head>
 <body>
-  <h1>Voz nativa do dosvox</h1>
-  <p>Este addon adiciona ao NVDA um sintetizador baseado nos difones nativos do Dosvox.</p>
+  <h1>Voz nativa do DOSVOX</h1>
+  <p>Sintetizador em português para o NVDA baseado na voz nativa do sistema DOSVOX, desenvolvido na UFRJ a partir de 1993.</p>
+  <p>Este complemento é uma adaptação independente; não é um produto oficial do Projeto DOSVOX nem da NV Access.</p>
 
   <h2>Recursos</h2>
   <ul>
-    <li>Integração da voz diretamente na lista de sintetizadores do NVDA.</li>
-    <li>Suporte a variantes de banco de difones: Novo difo, Difones, Difones 2, Difones 3 e Difones 5.</li>
-    <li>Controle de velocidade, tom, volume e pausas.</li>
-    <li>Pronúncia adaptada para números, pontuação e símbolos.</li>
-    <li>Tratamento especial para eco de caracteres durante a digitação.</li>
+    <li>Variantes Difones, Difones 2, Difones 3, Difones 5 e Novo difo.</li>
+    <li>Gravações dedicadas para letras, números e símbolos.</li>
+    <li>Opção de letras rápidas e modos Cortafala e Rapidinho.</li>
+    <li>Redução opcional do volume para 40%.</li>
+    <li>Síntese em fluxo e interrupção rápida de falas longas.</li>
+    <li>Tratamento de números, horários, valores em reais, pontuação, soletração e Ajuda de Entrada.</li>
   </ul>
 
-  <h2>Melhorias implementadas</h2>
-  <ul>
-    <li>Correção da estrutura do addon para instalação e carregamento corretos no NVDA.</li>
-    <li>Correção do manifesto com codificação UTF-8 e textos acentuados corretamente.</li>
-    <li>Suporte a fala de letras no modo de digitação, evitando a leitura em fonemas.</li>
-    <li>Suporte a letras maiúsculas, letras acentuadas, cedilha e símbolos comuns.</li>
-    <li>Tratamento especial para teclas como F1 até F12.</li>
-    <li>Ajuste da velocidade para que 50 corresponda à velocidade normal.</li>
-    <li>Inclusão de variantes de difones selecionáveis nas configurações da voz.</li>
-    <li>Valores padrão ajustados para instalação nova: velocidade 50, pausas 0 e variante Difones 2.</li>
-    <li>Correções finas de pronúncia para palavras e casos problemáticos observados em uso real.</li>
-  </ul>
+  <h2>Configuração</h2>
+  <p>No painel de voz do NVDA estão disponíveis a variante, Cortafala, Acelerar letras, Rapidinho e redução de volume. Os valores são persistidos no arquivo <code>dosvox.ini</code> do complemento.</p>
+  <p>Parâmetros numéricos avançados, como INTERPAL, CORTEFON, SOBRAFON e pausas, permanecem no <code>dosvox.ini</code> para evitar controles deslizantes imprecisos.</p>
 
   <h2>Instalação</h2>
-  <p>Abra o arquivo <code>.nvda-addon</code> com o NVDA em execução e confirme a instalação.</p>
-  <p>Depois disso, selecione a voz em Preferências, Configurações, Fala, Sintetizador.</p>
+  <p>Abra o arquivo <code>.nvda-addon</code> com o NVDA em execução, confirme a instalação e reinicie o NVDA. Depois selecione “Voz nativa do DOSVOX” em Preferências, Configurações, Fala, Sintetizador.</p>
 
-  <h2>Observações</h2>
-  <p>Este addon altera apenas o comportamento do sintetizador Dosvox nativo. Ele não modifica dicionários globais de fala do NVDA nem altera outras vozes.</p>
+  <h2>Origem</h2>
+  <p>Adaptação para o NVDA por Edson Miranda, contato: edson.demiranda.melo@gmail.com.</p>
+  <p>A voz e os dados de síntese têm origem no Projeto DOSVOX, criado no NCE/UFRJ a partir de 1993.</p>
 </body>
 </html>

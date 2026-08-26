@@ -1,0 +1,2132 @@
+# descricoes.dic  --  dicionario de sanitizacao de fala da Voz Dosvox
+#
+# Arquivo EDITAVEL (UTF-8). Uma entrada por linha, no formato:
+#     <caractere><TAB><texto>
+# Linhas em branco e linhas iniciadas por # sao ignoradas.
+#
+# Para cada caractere de uma fala: se ele estiver aqui, e' trocado pelo
+# <texto> (lido entre espacos); se nao estiver e couber em CP1252, fica
+# como esta; se nao couber e nao estiver aqui, e' descartado.
+#
+# Contem apenas o que a voz NAO le direto: emojis, simbolos incomuns e os
+# tipograficos da faixa alta da CP1252. O que ja e' CP1252 comum (letras,
+# pontuacao ASCII como "!", acentuadas) NAO aparece aqui de proposito.
+# Gerado a partir de characterDescriptions.dic, cldr.dic e symbols.dic (NVDA);
+# as grafias como "…" -> "..." vem da decomposicao Unicode. Edite a vontade.
+#
+ĉ	c circunflexo
+ĝ	g circunflexo
+ĥ	h circunflexo
+ĵ	j circunflexo
+œ	óh éh
+ŝ	s circunflexo
+ŭ	u breve
+ƒ	florim
+̂	normaliza
+֏	Dram armênio
+؋	Afegane afegão
+،	vírgula árabe
+؛	ponto e vírgula árabe
+؟	ponto de interrogação árabe
+৳	Taka bengali
+฿	Baht tailandês
+៛	Riel cambojano
+‐	traço de união
+―	barra horizontal
+‖	linha vertical dupla
+‚	apóstrofo inferior direito
+„	aspas inferiores direitas
+†	obelisco
+‡	obelisco duplo
+•	ponto lista
+‣	marcador triangular
+…	...
+‧	ponto de hifenização
+‰	por mil
+′	plica
+″	plica dupla
+‴	plica tripla
+‸	circunflexo
+※	marca de referência
+‼	!!
+‽	interrobangue
+‾	linha superior
+⁂	asterismo
+⁃	marcador tracinho
+⁄	barra de fração
+⁉	!?
+⁰	0
+⁴	4
+⁵	5
+⁶	6
+⁷	7
+⁸	8
+⁹	9
+⁺	+
+⁻	menos sobrescrito
+⁼	=
+⁽	(
+⁾	)
+ⁿ	n sobrescrito
+₀	0
+₁	1
+₂	2
+₃	3
+₄	4
+₅	5
+₆	6
+₇	7
+₈	8
+₉	9
+₊	+
+₋	menos subscrito
+₌	=
+₍	(
+₎	)
+₡	Colón costarriquenho
+₢	cruzeiros
+₣	franco francês
+₤	lira
+₥	mill
+₦	Naira nigeriana
+₧	Peseta espanhola
+₨	rupia
+₩	won
+₪	Novo shekel israelense
+₫	Dong vietnamita
+€	euro
+₭	Kip laosiano
+₮	Tugrik mongol
+₰	centavo alemão
+₱	peso
+₲	Guarani paraguaio
+₳	austral
+₴	Hryvnia ucraniano
+₵	Cedi ganês
+₶	livre tournois
+₷	spesmilo
+₸	Tenge cazaque
+₹	rupia indiana
+₺	Lira turca
+₼	Manat azeri
+₽	rublo
+₾	Lari georgiano
+₿	bitcoin
+⃗	vetor entre
+ℂ	números complexos c maiúsculo cunhado
+ℍ	quatérnios h maiúsculo cunhado
+ℑ	parte imaginária do número complexo letra preta i maiúscula
+ℕ	números naturais n maiúsculo cunhado
+℗	símbolo de direitos autorais de fonograma
+℘	p maiúsculo Weierstrass
+ℚ	números racionais q maiúsculo cunhado
+ℜ	parte real do número complexo letra preta r maiúscula
+ℝ	números reais r maiúsculo cunhado
+℠	Marca de Serviço
+™	símbolo de marca registrada
+ℤ	inteiros z maiúsculo cunhado
+ℵ	primeiro cardinal transfinito símbolo alef
+ℶ	segundo cardinal transfinito símbolo bet
+ℹ	informações
+⅐	um sétimo
+⅑	um nono
+⅒	um décimo
+⅓	um terço
+⅔	dois terços
+⅕	um quinto
+⅖	dois quintos
+⅗	três quintos
+⅘	quatro quintos
+⅙	um sexto
+⅚	cinco sextos
+⅛	um oitavo
+⅜	três oitavos
+⅝	cinco oitavos
+⅞	sete oitavos
+←	seta apontando para a esquerda
+↑	seta apontando para cima
+→	seta apontando para a direita
+↓	seta apontando para baixo
+↔	seta para esquerda e direita
+↕	seta para cima e para baixo
+↖	seta para cima e para a esquerda
+↗	seta para cima e para a direita
+↘	seta para baixo e para a direita
+↙	seta para baixo e para a esquerda
+↚	traçado de seta para a esquerda
+↛	traçado de seta para a direita
+↜	seta ondulada para a esquerda
+↝	seta ondulada para a direita
+↞	seta de duas pontas para a esquerda
+↟	seta de duas pontas para cima
+↠	seta de duas pontas para a direita
+↡	seta de duas pontas para baixo
+↢	flecha com cauda para a esquerda
+↣	flecha com cauda para a direita
+↤	flecha com barra para a esquerda
+↥	flecha com barra para cima
+↦	flecha com barra para a direita
+↧	flecha com barra para baixo
+↨	seta para cima e para baixo com base
+↩	seta curva da direita para a esquerda
+↪	seta curva da esquerda para a direita
+↫	seta para a esquerda com laço
+↬	seta para a direita com laço
+↭	seta ondulada bidirecional
+↮	traçado de seta para direita e esquerda
+↯	seta em zigue-zague para baixo
+↰	seta para cima com ponta para esquerda
+↱	seta para cima com ponta para direita
+↲	seta para baixo com ponta para esquerda
+↳	seta para baixo com ponta para direita
+↴	seta para direita com ponta para baixo
+↵	seta para baixo com curva para esquerda
+↶	seta de semicírculo superior no sentido anti-horário
+↷	seta de semicírculo superior no sentido horário
+↸	seta noroeste sob barra longa
+↹	seta para a esquerda da barra sobre seta para a direita da barra
+↺	seta de círculo aberto no sentido anti-horário
+↻	seta de círculo aberto no sentido horário
+↼	arpão para a esquerda com farpa para cima
+↽	arpão para a esquerda com farpa para baixo
+↾	arpão para cima com farpa para a direita
+↿	arpão para cima com farpa para a esquerda
+⇀	arpão para a direita com farpa para cima
+⇁	arpão para a direita com farpa para baixo
+⇂	arpão para baixo com farpa para a direita
+⇃	arpão para baixo com farpa para a esquerda
+⇄	seta para a direita sobre seta para a esquerda
+⇅	setas apontando para cima e para baixo
+⇆	setas apontando para a esquerda e para a direita
+⇇	setas paralelas para a esquerda
+⇈	setas paralelas para cima
+⇉	setas paralelas para a direita
+⇊	setas paralelas para baixo
+⇋	arpão para a esquerda sobre arpão para a direita
+⇌	arpão para a direita sobre arpão para a esquerda
+⇍	seta dupla para a esquerda com traço
+⇎	seta dupla bidirecional com traço
+⇏	seta dupla para a direita com traço
+⇐	seta dupla para a esquerda
+⇑	seta dupla para cima
+⇒	seta dupla para a direita
+⇓	seta dupla para baixo
+⇔	seta dupla bidirecional
+⇖	seta dupla para noroeste
+⇗	seta dupla para nordeste
+⇘	seta dupla para sudeste
+⇙	seta dupla para sudoeste
+⇚	seta tripla para a esquerda
+⇛	seta tripla para a direita
+⇜	seta de rabisco para a esquerda
+⇝	seta de rabisco para a direita
+⇞	seta para cima com traço duplo
+⇟	seta para baixo com traço duplo
+⇠	seta tracejada para a esquerda
+⇡	seta tracejada para cima
+⇢	seta tracejada para a direita
+⇣	seta tracejada para baixo
+⇤	seta para a esquerda da barra
+⇥	seta para a direita da barra
+⇦	seta branca para a esquerda
+⇧	seta branca para cima
+⇨	seta branca para a direita
+⇩	seta branca para baixo
+⇪	seta branca para cima da barra
+⇵	seta para baixo à esquerda da seta para cima
+∀	para todos
+∁	conjunto complementar
+∂	diferencial parcial
+∃	existe
+∄	não existe
+∅	conjunto vazio
+∆	delta
+∇	nabla
+∈	elemento de
+∉	não pertence
+∊	pertence pequeno
+∋	contém como membro
+∌	não contém como membro
+∍	contém como membro pequeno
+∎	fim da prova
+∏	produto n-ário
+∐	coprodutório
+∑	somatório n-ário
+∓	menos ou mais
+∕	barra de divisão
+∖	diferença de conjunto
+∗	operador de asterisco
+∘	operador de anel
+∙	operador de marca de lista
+√	raiz quadrada
+∛	raíz cúbica
+∜	raiz quarta
+∝	proporcional a
+∞	sinal de infinito
+∟	ângulo direito
+∠	ângulo
+∡	Ângulo medido
+∢	Ângulo esférico
+∣	divide
+∤	não divide
+∥	paralelo
+∦	não paralelo a
+∧	e lógico
+∨	ou lógico
+∩	interseção
+∪	união
+∫	integral
+∬	integral duplo
+∭	Integral tripla
+∮	integral de contorno
+∯	Integral de superfície
+∰	Integral de volume
+∱	Integral em sentido horário
+∲	Integral linear em sentido horário
+∳	Integral linear em sentido anti-horário
+∴	então
+∵	porque
+∶	razão
+∷	proporção
+∹	excesso
+∺	proporção geométrica
+∼	operador de til
+∽	til invertido
+∾	s preguiçoso invertido
+∿	onda senoidal
+≀	produto entrelaçado
+≃	assintoticamente igual
+≄	não assintoticamente igual a
+≅	aproximadamente igual
+≆	aproximadamente mas não realmente igual a
+≈	quase igual
+≌	tudo igual
+≍	equivalente a
+≎	geometricamente equivalente a
+≏	diferença entre
+≐	aproxima-se do limite
+≑	geometricamente igual a
+≒	aproximadamente igual à imagem
+≔	dois pontos igual
+≕	igual dois pontos
+≖	anel em igual
+≙	estimativas
+≚	equiangular a
+≟	questionado igual a
+≠	desigual
+≡	igual a
+≢	não idêntico a
+≣	estritamente equivalente
+≤	menor que ou igual a
+≥	maior que ou igual
+≦	menor que sobre igual
+≧	maior que sobre igual
+≪	muito menor que
+≫	muito maior que
+≬	entre
+≭	não equivalente a
+≮	não menor que
+≯	não maior que
+≳	maior que ou equivalente
+≶	menor quê ou maior quê
+≷	maior quê ou menor quê
+≺	precede
+≻	sucede
+⊀	não precede
+⊁	não sucede
+⊂	subconjunto de
+⊃	superconjunto
+⊄	não é um subconjunto de
+⊅	não é um superconjunto de
+⊆	subconjunto de ou igual
+⊇	superconjunto de ou igual
+⊈	nem um subconjunto de nem igual a
+⊉	nem um superconjunto de nem igual a
+⊌	multiconjunto
+⊍	multiplicação de multiconjunto
+⊕	mais em círculo
+⊖	menos em círculo
+⊗	vezes em círculo
+⊘	barra de divisão em círculo
+⊙	operador de ponto em círculo
+⊚	operador de anel em círculo
+⊛	operador de asterisco em círculo
+⊞	mais em quadrado
+⊟	menos em quadrado
+⊥	contradição arbitrária
+⊮	não força
+⊰	precede em relação
+⊱	sucede em relação
+⊶	original
+⊹	matriz conjugada hermitiana
+⊿	triângulo retângulo direito
+⋁	ou lógico n-ário
+⋂	interseção n-ária
+⋃	união n-ária
+⋅	operador de ponto
+⋆	operador de estrela
+⋈	junção natural
+⋒	interseção dupla
+⋘	muitíssimo menor que
+⋙	muitíssimo maior que
+⋭	não contém como subgrupo normal ou igual
+⋮	reticências verticais
+⋯	reticências horizontais a meio da linha
+⋰	reticências diagonais direitas para cima
+⋱	reticências diagonais direitas para baixo
+⌘	tecla Command do mac
+⌚	relógio de pulso
+⌛	ampulheta
+⌥	tecla Option do mac
+⌨	teclado
+⏏	botão ejetar
+⏩	botão avançar
+⏪	botão de retroceder
+⏫	botão de avanço para cima
+⏬	botão de avanço para baixo
+⏭	botão de próxima faixa
+⏮	botão de faixa anterior
+⏯	botão de reproduzir ou pausar
+⏰	despertador
+⏱	cronômetro
+⏲	relógio temporizador
+⏳	ampulheta contando o tempo
+⏸	botão pausar
+⏹	botão parar
+⏺	botão gravar
+Ⓜ	círculo com a letra M
+■	quadrado preenchido
+□	quadrado vazio
+▢	quadrado vazio com cantos arredondados
+▣	quadrado vazio com quadrado preenchido
+▤	quadrado com linhas horizontais
+▥	quadrado com linhas verticais
+▦	quadrado com linhas cruzadas ortogonais
+▧	quadrado com linhas do canto superior esquerdo para o canto inferior direito
+▨	quadrado com linhas do canto superior direito para o canto inferior esquerdo
+▩	quadrado com linhas cruzadas diagonais
+▪	quadrado preto pequeno
+▫	quadrado branco pequeno
+▬	retângulo preenchido
+▭	retângulo vazio
+▮	retângulo vertical preenchido
+▰	paralelogramo preenchido
+▲	triângulo preenchido apontando para cima
+△	triângulo vazio apontando para cima
+▴	triângulo pequeno preenchido apontando para cima
+▵	triângulo pequeno vazio apontando para cima
+▶	botão reproduzir
+▷	triângulo vazio apontando para a direita
+▸	triângulo pequeno preenchido apontando para a direita
+▹	triângulo pequeno vazio apontando para a direita
+►	ponteiro preenchido apontando para a direita
+▻	ponteiro vazio apontando para a direita
+▼	triângulo preenchido apontando para baixo
+▽	triângulo vazio apontando para baixo
+▾	triângulo pequeno preenchido apontando para baixo
+▿	triângulo pequeno vazio apontando para baixo
+◀	botão de voltar
+◁	triângulo vazio apontando para a esquerda
+◂	triângulo pequeno preenchido apontando para a esquerda
+◃	triângulo pequeno vazio apontando para a esquerda
+◄	ponteiro preenchido apontando para a esquerda
+◅	ponteiro vazio apontando para a esquerda
+◆	losango preenchido
+◇	losango vazio
+◈	losango vazio com losango preenchido
+◉	círculo vazio com círculo preenchido
+◊	losango
+○	círculo vazio
+◌	círculo pontilhado
+◍	círculo com linhas verticais
+◎	círculos concêntricos
+●	círculo preenchido
+◐	círculo com a metade esquerda preenchida
+◑	círculo com a metade direita preenchida
+◒	círculo com a metade inferior preenchida
+◓	círculo com a metade superior preenchida
+◔	círculo com quadrante superior direito preenchido
+◕	círculo preenchido exceto o quadrante superior esquerdo
+◖	metade esquerda do círculo preenchida
+◗	metade direita do círculo preenchida
+◘	marcador invertido
+◙	quadrado preenchido com círculo vazio
+◜	quarto de círculo superior esquerdo
+◝	quarto de círculo superior direito
+◞	quarto de círculo inferior direito
+◟	quarto de círculo inferior esquerdo
+◠	meio círculo superior
+◡	meio círculo inferior
+◢	triângulo inferior direito preenchido
+◣	triângulo inferior esquerdo preenchido
+◤	triângulo superior esquerdo preenchido
+◥	triângulo superior direito preenchido
+◦	marcador vazio
+◯	círculo vazio grande
+◳	quadrado vazio com quadrante superior direito
+◷	círculo vazio com quadrante superior direito
+◻	quadrado branco médio
+◼	quadrado preto médio
+◽	quadrado branco médio menor
+◾	quadrado preto médio menor
+◿	triângulo inferior direito
+☀	sol
+☁	nuvem
+☂	guarda-chuva
+☃	boneco de neve
+☄	cometa
+☎	telefone no gancho
+☑	caixa de seleção marcada com tique
+☔	sombrinha na chuva
+☕	café
+☘	trevo
+☝	indicador apontando para cima
+☠	caveira e ossos cruzados
+☢	radioativo
+☣	risco biológico
+☦	cruz ortodoxa
+☪	estrela e lua crescente
+☮	símbolo da paz
+☯	yin yang
+☸	roda do Dharma
+☹	rosto descontente
+☺	rosto sorridente
+♀	símbolo de feminino
+♂	símbolo de masculino
+♈	signo de Áries
+♉	signo de Touro
+♊	signo de Gêmeos
+♋	signo de Câncer
+♌	signo de Leão
+♍	signo de Virgem
+♎	signo de Libra
+♏	signo de Escorpião
+♐	signo de Sagitário
+♑	signo de Capricórnio
+♒	signo de Aquário
+♓	signo de Peixes
+♟	peão de xadrez
+♠	naipe de espadas
+♣	naipe de paus
+♥	naipe de copas
+♦	naipe de ouros
+♨	chamas
+♪	colcheia
+♭	bemol
+♯	sustenido
+♻	símbolo de reciclagem
+♾	infinito
+♿	símbolo de cadeira de rodas
+⚒	martelo e picareta
+⚓	âncora
+⚔	espadas cruzadas
+⚕	símbolo da medicina
+⚖	balança
+⚗	alambique
+⚙	engrenagem
+⚛	símbolo de átomo
+⚜	flor-de-lis
+⚠	aviso
+⚡	alta tensão
+⚧	símbolo transgênero
+⚪	círculo branco
+⚫	círculo preto
+⚰	caixão
+⚱	urna funerária
+⚽	bola de futebol
+⚾	bola de beisebol
+⛄	boneco de neve sem neve
+⛅	sol por trás das nuvens
+⛈	chuva com trovão
+⛎	signo de Ofiúco
+⛏	picareta
+⛑	capacacete de socorrista
+⛓	correntes
+⛔	entrada proibida
+⛩	santuário japonês
+⛪	igreja
+⛰	montanha
+⛱	guarda-sol
+⛲	fonte
+⛳	bandeira no buraco
+⛴	balsa
+⛵	barco a vela
+⛷	esquiador
+⛸	patins de gelo
+⛹	pessoa jogando basquete
+⛺	barraca
+⛽	posto de gasolina
+✂	tesoura
+✅	marca de seleção branca
+✈	avião
+✉	envelope
+✊	punho levantado
+✋	mão levantada
+✌	mão em V de vitória
+✍	escrevendo à mão
+✏	lápis
+✒	ponta de caneta tinteiro
+✓	marca de verificação
+✔	marca de seleção
+✖	sinal de multiplicação
+✗	x de cédula
+✝	cruz latina
+✡	estrela de Davi
+✨	brilhos
+✳	asterisco de oito pontas
+✴	estrela de oito pontas
+❄	floco de neve
+❇	faísca
+❌	xis
+❎	botão de xis
+❓	ponto de interrogação vermelho
+❔	ponto de interrogação branco
+❕	ponto de exclamação branco
+❖	losango preto menos x branco
+❗	ponto de exclamação vermelho
+❣	exclamação de coração
+❤	coração vermelho
+➔	seta realçada para a direita de cabeça larga
+➕	símbolo de adição
+➖	símbolo de subtração
+➗	símbolo de divisão
+➡	seta para a direita
+➢	Seta para a direita com iluminação superior tridimensional
+➰	laço encaracolado
+➿	loop encaracolado duas vezes
+⟂	perpendicular
+⠀	braille em branco
+⠁	braille 1
+⠂	braille 2
+⠃	braille 1 2
+⠄	braille 3
+⠅	braille 1 3
+⠆	braille 2 3
+⠇	braille 1 2 3
+⠈	braille 4
+⠉	braille 1 4
+⠊	braille 2 4
+⠋	braille 1 2 4
+⠌	braille 3 4
+⠍	braille 1 3 4
+⠎	braille 2 3 4
+⠏	braille 1 2 3 4
+⠐	braille 5
+⠑	braille 1 5
+⠒	braille 2 5
+⠓	braille 1 2 5
+⠔	braille 3 5
+⠕	braille 1 3 5
+⠖	braille 2 3 5
+⠗	braille 1 2 3 5
+⠘	braille 4 5
+⠙	braille 1 4 5
+⠚	braille 2 4 5
+⠛	braille 1 2 4 5
+⠜	braille 3 4 5
+⠝	braille 1 3 4 5
+⠞	braille 2 3 4 5
+⠟	braille 1 2 3 4 5
+⠠	braille 6
+⠡	braille 1 6
+⠢	braille 2 6
+⠣	braille 1 2 6
+⠤	braille 3 6
+⠥	braille 1 3 6
+⠦	braille 2 3 6
+⠧	braille 1 2 3 6
+⠨	braille 4 6
+⠩	braille 1 4 6
+⠪	braille 2 4 6
+⠫	braille 1 2 4 6
+⠬	braille 3 4 6
+⠭	braille 1 3 4 6
+⠮	braille 2 3 4 6
+⠯	braille 1 2 3 4 6
+⠰	braille 5 6
+⠱	braille 1 5 6
+⠲	braille 2 5 6
+⠳	braille 1 2 5 6
+⠴	braille 3 5 6
+⠵	braille 1 3 5 6
+⠶	braille 2 3 5 6
+⠷	braille 1 2 3 5 6
+⠸	braille 4 5 6
+⠹	braille 1 4 5 6
+⠺	braille 2 4 5 6
+⠻	braille 1 2 4 5 6
+⠼	braille 3 4 5 6
+⠽	braille 1 3 4 5 6
+⠾	braille 2 3 4 5 6
+⠿	braille 1 2 3 4 5 6
+⡀	braille 7
+⡁	braille 1 7
+⡂	braille 2 7
+⡃	braille 1 2 7
+⡄	braille 3 7
+⡅	braille 1 3 7
+⡆	braille 2 3 7
+⡇	braille 1 2 3 7
+⡈	braille 4 7
+⡉	braille 1 4 7
+⡊	braille 2 4 7
+⡋	braille 1 2 4 7
+⡌	braille 3 4 7
+⡍	braille 1 3 4 7
+⡎	braille 2 3 4 7
+⡏	braille 1 2 3 4 7
+⡐	braille 5 7
+⡑	braille 1 5 7
+⡒	braille 2 5 7
+⡓	braille 1 2 5 7
+⡔	braille 3 5 7
+⡕	braille 1 3 5 7
+⡖	braille 2 3 5 7
+⡗	braille 1 2 3 5 7
+⡘	braille 4 5 7
+⡙	braille 1 4 5 7
+⡚	braille 2 4 5 7
+⡛	braille 1 2 4 5 7
+⡜	braille 3 4 5 7
+⡝	braille 1 3 4 5 7
+⡞	braille 2 3 4 5 7
+⡟	braille 1 2 3 4 5 7
+⡠	braille 6 7
+⡡	braille 1 6 7
+⡢	braille 2 6 7
+⡣	braille 1 2 6 7
+⡤	braille 3 6 7
+⡥	braille 1 3 6 7
+⡦	braille 2 3 6 7
+⡧	braille 1 2 3 6 7
+⡨	braille 4 6 7
+⡩	braille 1 4 6 7
+⡪	braille 2 4 6 7
+⡫	braille 1 2 4 6 7
+⡬	braille 3 4 6 7
+⡭	braille 1 3 4 6 7
+⡮	braille 2 3 4 6 7
+⡯	braille 1 2 3 4 6 7
+⡰	braille 5 6 7
+⡱	braille 1 5 6 7
+⡲	braille 2 5 6 7
+⡳	braille 1 2 5 6 7
+⡴	braille 3 5 6 7
+⡵	braille 1 3 5 6 7
+⡶	braille 2 3 5 6 7
+⡷	braille 1 2 3 5 6 7
+⡸	braille 1 2 3 7
+⡹	braille 1 4 5 6 7
+⡺	braille 2 4 5 6 7
+⡻	braille 1 2 4 5 6 7
+⡼	braille 3 4 5 6 7
+⡽	braille 1 3 4 5 6 7
+⡾	braille 2 3 4 5 6 7
+⡿	braille 1 2 3 4 5 6 7
+⢀	braille 8
+⢁	braille 1 8
+⢂	braille 2 8
+⢃	braille 1 2 8
+⢄	braille 3 8
+⢅	braille 1 3 8
+⢆	braille 2 3 8
+⢇	braille 1 2 3 8
+⢈	braille 4 8
+⢉	braille 1 4 8
+⢊	braille 2 4 8
+⢋	braille 1 2 4 8
+⢌	braille 3 4 8
+⢍	braille 1 3 4 8
+⢎	braille 2 3 4 8
+⢏	braille 1 2 3 4 8
+⢐	braille 5 8
+⢑	braille 1 5 8
+⢒	braille 2 5 8
+⢓	braille 1 2 5 8
+⢔	braille 3 5 8
+⢕	braille 1 3 5 8
+⢖	braille 2 3 5 8
+⢗	braille 1 2 3 5 8
+⢘	braille 4 5 8
+⢙	braille 1 4 5 8
+⢚	braille 2 4 5 8
+⢛	braille 1 2 4 5 8
+⢜	braille 3 4 5 8
+⢝	braille 1 3 4 5 8
+⢞	braille 2 3 4 5 8
+⢟	braille 1 2 3 4 5 8
+⢠	braille 6 8
+⢡	braille 1 6 8
+⢢	braille 2 6 8
+⢣	braille 1 2 6 8
+⢤	braille 3 6 8
+⢥	braille 1 3 6 8
+⢦	braille 2 3 6 8
+⢧	braille 1 2 3 6 8
+⢨	braille 4 6 8
+⢩	braille 1 4 6 8
+⢪	braille 2 4 6 8
+⢫	braille 1 2 4 6 8
+⢬	braille 3 4 6 8
+⢭	braille 1 3 4 6 8
+⢮	braille 2 3 4 6 8
+⢯	braille 1 2 3 4 6 8
+⢰	braille 5 6 8
+⢱	braille 1 5 6 8
+⢲	braille 2 5 6 8
+⢳	braille 1 2 5 6 8
+⢴	braille 3 5 6 8
+⢵	braille 1 3 5 6 8
+⢶	braille 2 3 5 6 8
+⢷	braille 1 2 3 5 6 8
+⢸	braille 1 2 3 8
+⢹	braille 1 4 5 6 8
+⢺	braille 2 4 5 6 8
+⢻	braille 1 2 4 5 6 8
+⢼	braille 3 4 5 6 8
+⢽	braille 1 3 4 5 6 8
+⢾	braille 2 3 4 5 6 8
+⢿	braille 1 2 3 4 5 6 8
+⣀	braille 7 8
+⣁	braille 1 7 8
+⣂	braille 2 7 8
+⣃	braille 1 2 7 8
+⣄	braille 3 7 8
+⣅	braille 1 3 7 8
+⣆	braille 2 3 7 8
+⣇	braille 1 2 3 7 8
+⣈	braille 4 7 8
+⣉	braille 1 4 7 8
+⣊	braille 2 4 7 8
+⣋	braille 1 2 4 7 8
+⣌	braille 3 4 7 8
+⣍	braille 1 3 4 7 8
+⣎	braille 2 3 4 7 8
+⣏	braille 1 2 3 4 7 8
+⣐	braille 5 7 8
+⣑	braille 1 5 7 8
+⣒	braille 2 5 7 8
+⣓	braille 1 2 5 7 8
+⣔	braille 3 5 7 8
+⣕	braille 1 3 5 7 8
+⣖	braille 2 3 5 7 8
+⣗	braille 1 2 3 5 7 8
+⣘	braille 4 5 7 8
+⣙	braille 1 4 5 7 8
+⣚	braille 2 4 5 7 8
+⣛	braille 1 2 4 5 7 8
+⣜	braille 3 4 5 7 8
+⣝	braille 1 3 4 5 7 8
+⣞	braille 2 3 4 5 7 8
+⣟	braille 1 2 3 4 5 7 8
+⣠	braille 6 7 8
+⣡	braille 1 6 7 8
+⣢	braille 2 6 7 8
+⣣	braille 1 2 6 7 8
+⣤	braille 3 6 7 8
+⣥	braille 1 3 6 7 8
+⣦	braille 2 3 6 7 8
+⣧	braille 1 2 3 6 7 8
+⣨	braille 4 6 7 8
+⣩	braille 1 4 6 7 8
+⣪	braille 2 4 6 7 8
+⣫	braille 1 2 4 6 7 8
+⣬	braille 3 4 6 7 8
+⣭	braille 1 3 4 6 7 8
+⣮	braille 2 3 4 6 7 8
+⣯	braille 1 2 3 4 6 7 8
+⣰	braille 5 6 7 8
+⣱	braille 1 5 6 7 8
+⣲	braille 2 5 6 7 8
+⣳	braille 1 2 5 6 7 8
+⣴	braille 3 5 6 7 8
+⣵	braille 1 3 5 6 7 8
+⣶	braille 2 3 5 6 7 8
+⣷	braille 1 2 3 5 6 7 8
+⣸	braille 1 2 3 7 8
+⣹	braille 1 4 5 6 7 8
+⣺	braille 2 4 5 6 7 8
+⣻	braille 1 2 4 5 6 7 8
+⣼	braille 3 4 5 6 7 8
+⣽	braille 1 3 4 5 6 7 8
+⣾	braille 2 3 4 5 6 7 8
+⣿	braille 1 2 3 4 5 6 7 8
+⤴	seta para a direita curvada para cima
+⤵	seta para a direita curvada para baixo
+⨧	mais com dois subscrito
+⨯	produto vetorial
+⨼	produto interior
+⩣	ou lógico com duas barras subscritas
+⩽	menor que ou igual inclinado
+⪍	menor que acima de similar ou igual
+⪚	igual de duas linhas ou maior que
+⪺	sucede acima de não quase igual
+⬅	seta para a esquerda
+⬆	seta para cima
+⬇	seta para baixo
+⬛	quadrado preto grande
+⬜	quadrado branco grande
+⭐	estrela branca média
+⭕	círculo grande oco
+、	vírgula ideográfica
+。	ponto ideográfico
+〈	colchete angular de abertura
+〉	colchete angular de fechamento
+《	colchete angular duplo de abertura
+》	colchete angular duplo de fechamento
+「	parêntese japonês kagikakko de abertura
+」	parêntese japonês kagikakko de fechamento
+『	parêntese kagikakko duplo de abertura
+』	parêntese kagikakko duplo de fechamento
+【	colchete lenticular preto de abertura
+】	colchete lenticular preto de fechamento
+〔	colchete casco de tartaruga de abertura
+〕	colchete casco de tartaruga de fechamento
+〖	colchete lenticular branco de abertura
+〗	colchete lenticular branco de fechamento
+〰	travessão ondulado
+〽	sinal japonês indicando início de música
+・	ponto mediano katakana
+㊗	botão japonês de “parabéns”
+㊙	botão japonês de “segredo”
+﷼	rial
+！	!
+．	.
+：	:
+；	;
+？	?
+𝒫	conjunto potência p maiúsculo
+𝔓	p maiúsculo fraktur
+𝔸	números algébricos a maiúsculo cunhado
+𝕁	números não negativos (inteiros) j maiúsculo cunhado
+🀄	dragão vermelho de mahjong
+🃏	curinga
+🅰	botão A (tipo sanguíneo)
+🅱	botão B (tipo sanguíneo)
+🅾	botão O (tipo sanguíneo)
+🅿	botão P
+🆎	botão AB (tipo sanguíneo)
+🆑	botão CL
+🆒	botão "COOL"
+🆓	botão "FREE"
+🆔	botão ID
+🆕	botão "NEW"
+🆖	botão NG
+🆗	botão OK
+🆘	botão SOS
+🆙	botão "UP!"
+🆚	botão VS
+🈁	botão japonês de “aqui”
+🈂	botão japonês de “taxa de serviço”
+🈚	botão japonês de “gratuito”
+🈯	botão japonês de “reservado”
+🈲	botão japonês de “proibido”
+🈳	botão japonês de “vago”
+🈴	botão japonês de “nota mínima”
+🈵	botão japonês de “sem vagas”
+🈶	botão japonês de “não gratuito”
+🈷	botão japonês de “quantidade mensal”
+🈸	botão japonês de “aplicação”
+🈹	botão japonês de “desconto”
+🈺	botão japonês de “aberto para negócios”
+🉐	botão japonês de “barganha”
+🉑	botão japonês de “aceitável”
+🌀	ciclone
+🌁	enevoado
+🌂	guarda-chuva fechado
+🌃	noite estrelada
+🌄	aurora sobre montanhas
+🌅	aurora sobre água
+🌆	cidade ao anoitecer
+🌇	pôr do sol
+🌈	arco-íris
+🌉	ponte à noite
+🌊	onda
+🌋	vulcão
+🌌	via láctea
+🌍	globo mostrando Europa e África
+🌎	globo mostrando as Américas
+🌏	globo mostrando Ásia e Oceania
+🌐	globo com meridianos
+🌑	lua nova
+🌒	lua crescente côncava
+🌓	quarto crescente
+🌔	lua crescente convexa
+🌕	lua cheia
+🌖	lua minguante convexa
+🌗	quarto minguante
+🌘	lua minguante côncava
+🌙	lua crescente
+🌚	rosto da lua nova
+🌛	rosto da lua de quarto crescente
+🌜	rosto da lua de quarto minguante
+🌝	rosto da lua cheia
+🌞	rosto do sol
+🌟	estrela brilhante
+🌠	estrela cadente
+🌡	termômetro
+🌤	sol com nuvens
+🌥	nublado
+🌦	sol com chuva
+🌧	nuvem com chuva
+🌨	nuvem com neve
+🌩	nuvem com trovão
+🌪	tornado
+🌫	nevoeiro
+🌬	rosto de vento
+🌭	cachorro-quente
+🌮	taco
+🌯	burrito
+🌰	castanha
+🌱	muda de planta
+🌲	conífera
+🌳	árvore caidiça
+🌴	palmeira
+🌵	cacto
+🌶	pimenta
+🌷	tulipa
+🌸	flor de cerejeira
+🌹	rosa
+🌺	hibisco
+🌻	girassol
+🌼	flor
+🌽	milho
+🌾	planta de arroz
+🌿	erva
+🍀	trevo de quatro folhas
+🍁	folha de bordo
+🍂	folhas caídas
+🍃	folha ao vento
+🍄	cogumelo
+🍅	tomate
+🍆	berinjela
+🍇	uvas
+🍈	melão
+🍉	melancia
+🍊	tangerina
+🍋	limão
+🍌	banana
+🍍	abacaxi
+🍎	maçã vermelha
+🍏	maçã verde
+🍐	pera
+🍑	pêssego
+🍒	cereja
+🍓	morango
+🍔	hambúrguer
+🍕	pizza
+🍖	carne
+🍗	coxa de frango
+🍘	biscoito de arroz
+🍙	arroz japonês
+🍚	arroz cozido
+🍛	arroz com curry
+🍜	lámen
+🍝	espaguete
+🍞	pão
+🍟	batata frita
+🍠	batata assada
+🍡	dango
+🍢	oden
+🍣	sushi
+🍤	camarão frito
+🍥	bolinho de peixe
+🍦	sorvete italiano
+🍧	raspadinha de gelo
+🍨	sorvete
+🍩	donut
+🍪	biscoito
+🍫	chocolate
+🍬	bala
+🍭	pirulito
+🍮	pudim
+🍯	pote de mel
+🍰	pão de ló de morango
+🍱	bentô
+🍲	panela
+🍳	ovo frito
+🍴	garfo e faca
+🍵	xícara de chá sem alça
+🍶	saquê
+🍷	vinho
+🍸	coquetel
+🍹	bebida tropical
+🍺	cerveja
+🍻	canecas de cerveja
+🍼	mamadeira
+🍽	prato com talheres
+🍾	garrafa de champanhe
+🍿	pipoca
+🎀	laço de fita
+🎁	presente
+🎂	bolo de aniversário
+🎃	abóbora de halloween
+🎄	árvore de natal
+🎅	Papai Noel
+🎆	fogos de artifício
+🎇	vela estrela
+🎈	balão
+🎉	cone de festa
+🎊	confete
+🎋	árvore de tanabata
+🎌	bandeiras cruzadas
+🎍	decoração de pinhos
+🎎	bonecas japonesas
+🎏	bandeira de carpas
+🎐	carrilhão de vento
+🎑	contemplação da lua
+🎒	mochila
+🎓	chapéu de formatura
+🎖	medalha militar
+🎗	fita de lembrete
+🎙	microfone de estúdio
+🎚	controle de volume
+🎛	botões giratórios
+🎞	rolo de filmes
+🎟	ingresso de cinema
+🎠	carrossel
+🎡	roda gigante
+🎢	montanha russa
+🎣	pesca
+🎤	microfone
+🎥	câmera de cinema
+🎦	cinema
+🎧	fones de ouvido
+🎨	paleta de tintas
+🎩	cartola
+🎪	circo
+🎫	ingresso
+🎬	claquete
+🎭	máscara
+🎮	videogame
+🎯	no alvo
+🎰	caça-níquel
+🎱	bilhar
+🎲	jogo de dado
+🎳	boliche
+🎴	carta de flores
+🎵	nota musical
+🎶	notas musicais
+🎷	saxofone
+🎸	guitarra
+🎹	teclado musical
+🎺	trompete
+🎻	violino
+🎼	partitura musical
+🎽	camiseta de corrida
+🎾	tênis
+🎿	esqui
+🏀	bola de basquete
+🏁	bandeira quadriculada
+🏂	praticante de snowboard
+🏃	pessoa correndo
+🏄	surfista
+🏅	medalha esportiva
+🏆	troféu
+🏇	corrida de cavalos
+🏈	bola de futebol americano
+🏉	bola de rugby
+🏊	pessoa nadando
+🏋	pessoa levantando peso
+🏌	golfista
+🏍	motocicleta
+🏎	carro de corrida
+🏏	críquete
+🏐	bola de vôlei
+🏑	hóquei de campo
+🏒	hóquei no gelo
+🏓	pingue-pongue
+🏔	montanha com neve
+🏕	acampamento
+🏖	praia e guarda-sol
+🏗	construção
+🏘	casas
+🏙	cidade
+🏚	casa abandonada
+🏛	prédio grego
+🏜	deserto
+🏝	ilha deserta
+🏞	parque nacional
+🏟	estádio
+🏠	casa
+🏡	casa com jardim
+🏢	edifício comercial
+🏣	correio japonês
+🏤	correio
+🏥	hospital
+🏦	banco
+🏧	símbolo de caixa automático
+🏨	hotel
+🏩	motel
+🏪	loja de conveniência
+🏫	escola
+🏬	loja de departamentos
+🏭	fábrica
+🏮	lanterna vermelha de papel
+🏯	castelo japonês
+🏰	castelo
+🏳	bandeira branca
+🏴	bandeira preta
+🏵	roseta
+🏷	etiqueta
+🏸	badminton
+🏹	arco e flecha
+🏺	ânfora
+🏻	pele clara
+🏼	pele morena clara
+🏽	pele morena
+🏾	pele morena escura
+🏿	pele escura
+🐀	rato
+🐁	camundongo
+🐂	boi
+🐃	búfalo-asiático
+🐄	vaca
+🐅	tigre
+🐆	leopardo
+🐇	coelho
+🐈	gato
+🐉	dragão
+🐊	crocodilo
+🐋	baleia
+🐌	caracol
+🐍	cobra
+🐎	cavalo
+🐏	carneiro
+🐐	cabra
+🐑	ovelha
+🐒	macaco
+🐓	galo
+🐔	galinha
+🐕	cachorro
+🐖	porco
+🐗	javali
+🐘	elefante
+🐙	polvo
+🐚	caramujo
+🐛	inseto
+🐜	formiga
+🐝	abelha
+🐞	joaninha
+🐟	peixe
+🐠	peixe tropical
+🐡	baiacu
+🐢	tartaruga
+🐣	pintinho chocando
+🐤	pintinho de perfil
+🐥	pintinho de frente
+🐦	pássaro
+🐧	pinguim
+🐨	coala
+🐩	poodle
+🐪	camelo
+🐫	camelo com duas corcovas
+🐬	golfinho
+🐭	rosto de camundongo
+🐮	rosto de vaca
+🐯	rosto de tigre
+🐰	rosto de coelho
+🐱	rosto de gato
+🐲	rosto de dragão
+🐳	baleia esguichando água
+🐴	rosto de cavalo
+🐵	rosto de macaco
+🐶	rosto de cachorro
+🐷	rosto de porco
+🐸	sapo
+🐹	rosto de hamster
+🐺	rosto de lobo
+🐻	rosto de urso
+🐼	rosto de panda
+🐽	nariz de porco
+🐾	patas
+🐿	esquilo
+👀	olhos
+👁	olho
+👂	orelha
+👃	nariz
+👄	boca
+👅	língua
+👆	dorso da mão com indicador apontando para cima
+👇	dorso da mão com indicador apontando para baixo
+👈	dorso da mão com indicador apontando para a esquerda
+👉	dorso da mão com indicador apontando para a direita
+👊	soco
+👋	mão acenando
+👌	sinal de ok
+👍	polegar para cima
+👎	polegar para baixo
+👏	mãos aplaudindo
+👐	mãos abertas
+👑	coroa
+👒	chapéu feminino
+👓	óculos
+👔	gravata
+👕	camiseta
+👖	jeans
+👗	vestido
+👘	quimono
+👙	biquíni
+👚	roupas femininas
+👛	bolsinha
+👜	bolsa de mão
+👝	bolsa pequena
+👞	sapato masculino
+👟	tênis de corrida
+👠	sapato de salto alto
+👡	sandália feminina
+👢	bota feminina
+👣	pegadas
+👤	silhueta de busto
+👥	silhueta de bustos
+👦	menino
+👧	menina
+👨	homem
+👩	mulher
+👪	família
+👫	homem e mulher de mãos dadas
+👬	dois homens de mãos dadas
+👭	duas mulheres de mãos dadas
+👮	policial
+👯	pessoas com orelhas de coelho
+👰	pessoa com véu
+👱	pessoa cabelo louro
+👲	homem de boné
+👳	pessoa com turbante
+👴	homem idoso
+👵	idosa
+👶	bebê
+👷	trabalhador de construção civil
+👸	princesa
+👹	ogro
+👺	duende japonês
+👻	fantasma
+👼	bebê anjo
+👽	alienígena
+👾	monstro alienígena
+👿	rosto zangado com chifres
+💀	caveira
+💁	pessoa com a palma virada para cima
+💂	guarda
+💃	mulher dançando
+💄	batom
+💅	esmalte de unha
+💆	pessoa recebendo massagem facial
+💇	pessoa cortando o cabelo
+💈	barbearia
+💉	seringa
+💊	comprimido
+💋	marca de beijo
+💌	carta de amor
+💍	anel
+💎	pedra preciosa
+💏	beijo
+💐	buquê
+💑	casal apaixonado
+💒	capela de casamento
+💓	coração pulsante
+💔	coração partido
+💕	dois corações
+💖	coração brilhante
+💗	coração crescendo
+💘	coração com flecha
+💙	coração azul
+💚	coração verde
+💛	coração amarelo
+💜	coração roxo
+💝	coração com fita
+💞	corações girando
+💟	coração decorativo
+💠	diamante com um ponto
+💡	lâmpada
+💢	símbolo de raiva
+💣	bomba
+💤	zzz
+💥	colisão
+💦	pingos de suor
+💧	gota
+💨	rapidez
+💩	cocô
+💪	bíceps
+💫	zonzo
+💬	balão de diálogo
+💭	balão de pensamento
+💮	flor branca
+💯	cem pontos
+💰	saco de dinheiro
+💱	câmbio de moeda
+💲	cifrão
+💳	cartão de crédito
+💴	nota de iene
+💵	nota de dólar
+💶	nota de euro
+💷	nota de libra
+💸	dinheiro voando
+💹	gráfico subindo com iene
+💺	assento
+💻	laptop
+💼	maleta
+💽	minidisc
+💾	disquete
+💿	cd
+📀	DVD
+📁	pasta de arquivos
+📂	pasta de arquivos aberta
+📃	página dobrada
+📄	página voltada para cima
+📅	calendário
+📆	calendário com folhas destacáveis
+📇	índice de cartões
+📈	gráfico subindo
+📉	gráfico caindo
+📊	gráfico de barras
+📋	prancheta
+📌	tacha
+📍	tacha redonda
+📎	clipe de papel
+📏	régua reta
+📐	régua triangular
+📑	marcadores de página
+📒	livro contábil
+📓	caderno
+📔	caderno decorado
+📕	livro fechado
+📖	livro aberto
+📗	livro verde
+📘	livro azul
+📙	livro laranja
+📚	livros
+📛	crachá
+📜	pergaminho
+📝	memorando
+📞	telefone
+📟	pager
+📠	fax
+📡	antena parabólica
+📢	buzina
+📣	megafone
+📤	bandeja de saída
+📥	bandeja de entrada
+📦	pacote
+📧	e-mail
+📨	envelope chegando
+📩	envelope com seta
+📪	caixa de correio fechada com bandeira abaixada
+📫	caixa de correio fechada com bandeira levantada
+📬	caixa de correio aberta com bandeira levantada
+📭	caixa de correio aberta com bandeira abaixada
+📮	caixa de correio
+📯	corneta postal
+📰	jornal
+📱	telefone celular
+📲	telefone celular com seta
+📳	modo vibratório
+📴	telefone celular desligado
+📵	proibido o uso de telefone celular
+📶	barras de sinal
+📷	câmera
+📸	câmera com flash
+📹	câmera de vídeo
+📺	televisão
+📻	rádio
+📼	videocassete
+📽	projetor de filmes
+📿	rosário de oração
+🔀	botão de músicas aleatórias
+🔁	botão de repetir
+🔂	botão de repetir uma única faixa
+🔃	setas verticais no sentido horário
+🔄	botão de setas em sentido anti-horário
+🔅	botão de diminuir brilho
+🔆	botão de aumentar brilho
+🔇	alto-falante silenciado
+🔈	alto-falante com volume baixo
+🔉	alto-falante com volume médio
+🔊	alto-falante com volume alto
+🔋	pilha
+🔌	tomada elétrica
+🔍	lupa para a esquerda
+🔎	lupa para a direita
+🔏	cadeado com caneta
+🔐	cadeado fechado com chave
+🔑	chave
+🔒	cadeado
+🔓	cadeado aberto
+🔔	sino
+🔕	sino silenciado
+🔖	marcador de página
+🔗	link
+🔘	botão de opção
+🔙	seta "BACK"
+🔚	seta "END"
+🔛	seta "ON!"
+🔜	seta "SOON"
+🔝	seta "TOP"
+🔞	proibido para menores de 18 anos
+🔟	tecla 10
+🔠	letras latinas maiúsculas
+🔡	letras latinas minúsculas
+🔢	números
+🔣	símbolos
+🔤	letras latinas
+🔥	fogo
+🔦	lanterna
+🔧	chave inglesa
+🔨	martelo
+🔩	porca e parafuso
+🔪	faca de cozinha
+🔫	pistola d’água
+🔬	microscópio
+🔭	telescópio
+🔮	bola de cristal
+🔯	estrela de seis pontas
+🔰	símbolo japonês de principiante
+🔱	emblema de tridente
+🔲	botão quadrado preto
+🔳	botão quadrado branco
+🔴	círculo vermelho
+🔵	círculo azul
+🔶	losango laranja grande
+🔷	losango azul grande
+🔸	losango laranja pequeno
+🔹	losango azul pequeno
+🔺	triângulo vermelho para cima
+🔻	triângulo vermelho para baixo
+🔼	botão apontando para cima
+🔽	botão apontando para baixo
+🕉	om
+🕊	pomba branca
+🕋	caaba islã
+🕌	mesquita
+🕍	sinagoga
+🕎	menorá
+🕐	1 hora
+🕑	2 horas
+🕒	3 horas
+🕓	4 horas
+🕔	5 horas
+🕕	6 horas
+🕖	7 horas
+🕗	8 horas
+🕘	9 horas
+🕙	10 horas
+🕚	11 horas
+🕛	12 horas
+🕜	uma e meia
+🕝	duas e meia
+🕞	três e meia
+🕟	quatro e meia
+🕠	cinco e meia
+🕡	seis e meia
+🕢	sete e meia
+🕣	oito e meia
+🕤	nove e meia
+🕥	dez e meia
+🕦	onze e meia
+🕧	doze e meia
+🕯	vela
+🕰	relógio de mesa
+🕳	buraco
+🕴	homem de terno levitando
+🕵	detetive
+🕶	óculos escuros
+🕷	aranha
+🕸	teia de aranha
+🕹	joystick
+🕺	homem dançando
+🖇	clipes de papel conectados
+🖊	caneta
+🖋	caneta tinteiro
+🖌	pincel
+🖍	giz de cera
+🖐	mão aberta com os dedos separados
+🖕	dedo do meio
+🖖	saudação vulcana
+🖤	coração preto
+🖥	computador de mesa
+🖨	impressora
+🖱	mouse
+🖲	trackball
+🖼	quadro emoldurado
+🗂	divisores de pastas
+🗃	caixa de arquivos
+🗄	gavetas de escritório
+🗑	lixeira
+🗒	bloco espiral
+🗓	calendário espiral
+🗜	braçadeira
+🗝	chave antiga
+🗞	jornal enrolado
+🗡	adaga
+🗣	silhueta falando
+🗨	balão de diálogo à esquerda
+🗯	balão de raiva à direita
+🗳	urna eleitoral com cédula
+🗺	mapa-múndi
+🗻	Monte Fuji
+🗼	Torre de Tóquio
+🗽	Estátua da Liberdade
+🗾	mapa do Japão
+🗿	moai
+😀	rosto risonho
+😁	rosto contente com olhos sorridentes
+😂	rosto chorando de rir
+😃	rosto risonho com olhos bem abertos
+😄	rosto risonho com olhos sorridentes
+😅	rosto risonho com gota de suor
+😆	rosto risonho com olhos semicerrados
+😇	rosto sorridente com auréola
+😈	rosto sorridente com chifres
+😉	rosto com olho piscando
+😊	rosto sorridente com olhos sorridentes
+😋	rosto saboreando comida
+😌	rosto aliviado
+😍	rosto sorridente com olhos de coração
+😎	rosto sorridente com óculos escuros
+😏	rosto com sorriso maroto
+😐	rosto neutro
+😑	rosto inexpressivo
+😒	rosto aborrecido
+😓	rosto cabisbaixo com gota de suor
+😔	rosto deprimido
+😕	rosto confuso
+😖	rosto perplexo
+😗	rosto beijando
+😘	rosto mandando um beijo
+😙	rosto beijando com olhos sorridentes
+😚	rosto beijando com olhos fechados
+😛	rosto mostrando a língua
+😜	rosto piscando e com língua para fora
+😝	rosto com olhos semicerrados e língua para fora
+😞	rosto desapontado
+😟	rosto preocupado
+😠	rosto zangado
+😡	rosto furioso
+😢	rosto chorando
+😣	rosto perseverante
+😤	rosto soltando vapor pelo nariz
+😥	rosto triste, mas aliviado
+😦	rosto franzido com boca aberta
+😧	rosto angustiado
+😨	rosto amedrontado
+😩	rosto desolado
+😪	rosto sonolento
+😫	rosto cansado
+😬	rosto expressando desagrado
+😭	rosto chorando aos berros
+😮	rosto com boca aberta
+😯	rosto surpreso
+😰	rosto ansioso com gota de suor
+😱	rosto gritando de medo
+😲	rosto espantado
+😳	rosto ruborizado
+😴	rosto dormindo
+😵	rosto atordoado
+😶	rosto sem boca
+😷	rosto com máscara médica
+😸	rosto de gato sorrindo com olhos sorridentes
+😹	rosto de gato com lágrimas de alegria
+😺	rosto de gato sorrindo
+😻	rosto de gato sorridente com olhos de coração
+😼	rosto de gato com sorriso irônico
+😽	rosto de gato mandando um beijo
+😾	rosto de gato mal-humorado
+😿	rosto de gato chorando
+🙀	rosto de gato desolado
+🙁	rosto meio triste
+🙂	rosto levemente sorridente
+🙃	rosto de cabeça para baixo
+🙄	rosto com olhos revirados
+🙅	pessoa fazendo gesto de “não”
+🙆	pessoa fazendo gesto de “OK”
+🙇	pessoa fazendo reverência
+🙈	macaco que não vê nada
+🙉	macaco que não ouve nada
+🙊	macaco que não fala nada
+🙋	pessoa levantando a mão
+🙌	mãos para cima
+🙍	franzindo a sobrancelha
+🙎	pessoa fazendo bico
+🙏	mãos juntas
+🚀	foguete
+🚁	helicóptero
+🚂	locomotiva
+🚃	vagão de trem
+🚄	trem de alta velocidade
+🚅	trem de alta velocidade japonês
+🚆	trem
+🚇	metrô
+🚈	trem urbano
+🚉	estação
+🚊	bonde elétrico
+🚋	bonde
+🚌	ônibus
+🚍	ônibus se aproximando
+🚎	trólebus
+🚏	ponto de ônibus
+🚐	van
+🚑	ambulância
+🚒	carro do corpo de bombeiros
+🚓	viatura policial
+🚔	viatura policial se aproximando
+🚕	táxi
+🚖	táxi se aproximando
+🚗	carro
+🚘	carro se aproximando
+🚙	SUV
+🚚	caminhão de entrega
+🚛	caminhão
+🚜	trator
+🚝	monotrilho
+🚞	estrada de ferro na montanha
+🚟	estrada de ferro suspensa
+🚠	teleférico de montanha
+🚡	teleférico
+🚢	navio
+🚣	pessoa remando
+🚤	lancha
+🚥	semáforo horizontal
+🚦	semáforo vertical
+🚧	em construção
+🚨	sirene
+🚩	bandeira triangular
+🚪	porta
+🚫	proibido
+🚬	cigarro
+🚭	proibido fumar
+🚮	símbolo de lixeira
+🚯	proibido jogar lixo no chão
+🚰	água potável
+🚱	água não potável
+🚲	bicicleta
+🚳	proibido andar de bicicleta
+🚴	ciclista
+🚵	pessoa fazendo mountain bike
+🚶	pessoa andando
+🚷	proibida a passagem de pedestres
+🚸	crianças atravessando
+🚹	banheiro masculino
+🚺	banheiro feminino
+🚻	banheiro
+🚼	símbolo de bebê
+🚽	vaso sanitário
+🚾	WC
+🚿	chuveiro
+🛀	pessoa tomando banho
+🛁	banheira
+🛂	controle de passaportes
+🛃	alfândega
+🛄	restituição de bagagem
+🛅	depósito de bagagem
+🛋	sofá e luminária
+🛌	pessoa deitada na cama
+🛍	sacolas de compras
+🛎	sineta
+🛏	cama
+🛐	local de culto
+🛑	sinal de pare
+🛒	carrinho de compras
+🛕	templo hindu
+🛖	cabana
+🛗	elevador
+🛘	deslizamento
+🛜	sem fio
+🛝	escorregador
+🛞	roda
+🛟	boia
+🛠	martelo e chave-inglesa
+🛡	escudo
+🛢	barril de óleo
+🛣	estrada
+🛤	trilhos
+🛥	barco
+🛩	avião pequeno
+🛫	avião decolando
+🛬	avião aterrissando
+🛰	satélite
+🛳	cruzeiro
+🛴	patinete
+🛵	scooter
+🛶	canoa
+🛷	trenó
+🛸	disco voador
+🛹	skate
+🛺	automóvel riquixá
+🛻	caminhonete
+🛼	patins de rodas
+🟠	círculo laranja
+🟡	círculo amarelo
+🟢	círculo verde
+🟣	círculo roxo
+🟤	círculo marrom
+🟥	quadrado vermelho
+🟦	quadrado azul
+🟧	quadrado laranja
+🟨	quadrado amarelo
+🟩	quadrado verde
+🟪	quadrado roxo
+🟫	quadrado marrom
+🟰	sinal de igual
+🡺	seta farpada realçada para a direita de cabeça larga
+🤌	dedos comprimidos
+🤍	coração branco
+🤎	coração marrom
+🤏	mão beliscando
+🤐	rosto com boca de zíper
+🤑	rosto com cifrões
+🤒	rosto com termômetro
+🤓	rosto de nerd
+🤔	rosto pensativo
+🤕	rosto com atadura na cabeça
+🤖	rosto de robô
+🤗	rosto abraçando
+🤘	saudação do rock
+🤙	sinal "me liga"
+🤚	dorso da mão levantado
+🤛	punho esquerdo
+🤜	punho direito
+🤝	aperto de mãos
+🤞	dedos cruzados
+🤟	gesto de "te amo"
+🤠	rosto com chapéu de caubói
+🤡	rosto de palhaço
+🤢	rosto nauseado
+🤣	rolando no chão de rir
+🤤	rosto babando
+🤥	rosto de mentiroso
+🤦	pessoa decepcionada
+🤧	rosto espirrando
+🤨	rosto com sobrancelha levantada
+🤩	rosto com olhar maravilhado
+🤪	rosto bizarro
+🤫	rosto fazendo sinal de silêncio
+🤬	rosto com símbolos na boca
+🤭	rosto com a mão sobre a boca
+🤮	rosto vomitando
+🤯	cabeça explodindo
+🤰	grávida
+🤱	amamentando
+🤲	palmas unidas para cima
+🤳	selfie
+🤴	príncipe
+🤵	pessoa de smoking
+🤶	Mamãe Noel
+🤷	pessoa dando de ombros
+🤸	pessoa fazendo estrela
+🤹	malabarista
+🤺	esgrimista
+🤼	pessoas lutando
+🤽	pessoa jogando polo aquático
+🤾	handebol
+🤿	máscara de mergulho
+🥀	flor murcha
+🥁	tambor
+🥂	taças brindando
+🥃	copo
+🥄	colher
+🥅	gol
+🥇	medalha de ouro
+🥈	medalha de prata
+🥉	medalha de bronze
+🥊	luva de boxe
+🥋	quimono de artes marciais
+🥌	pedra de curling
+🥍	lacrosse
+🥎	softbol
+🥏	frisbee
+🥐	croissant
+🥑	abacate
+🥒	pepino
+🥓	bacon
+🥔	batata
+🥕	cenoura
+🥖	baguete
+🥗	salada verde
+🥘	caçarola com comida
+🥙	pão recheado
+🥚	ovo
+🥛	copo de leite
+🥜	amendoim
+🥝	kiwi
+🥞	panquecas
+🥟	bolinho asiático
+🥠	biscoito da sorte
+🥡	caixa para viagem
+🥢	hashi
+🥣	tigela com colher
+🥤	copo com canudo
+🥥	coco
+🥦	brócolis
+🥧	torta
+🥨	pretzel
+🥩	corte de carne
+🥪	sanduíche
+🥫	comida enlatada
+🥬	verdura
+🥭	manga
+🥮	bolo lunar
+🥯	bagel
+🥰	rosto sorridente com 3 corações
+🥱	rosto bocejando
+🥲	rosto sorridente com lágrima
+🥳	rosto festivo
+🥴	rosto embriagado
+🥵	rosto fervendo de calor
+🥶	rosto gelado
+🥷	ninja
+🥸	rosto disfarçado
+🥹	rosto segurando as lágrimas
+🥺	rosto implorando
+🥻	sari
+🥼	jaleco
+🥽	óculos de proteção
+🥾	bota de trekking
+🥿	sapatilha
+🦀	caranguejo
+🦁	rosto de leão
+🦂	escorpião
+🦃	peru
+🦄	rosto de unicórnio
+🦅	águia
+🦆	pato
+🦇	morcego
+🦈	tubarão
+🦉	coruja
+🦊	rosto de raposa
+🦋	borboleta
+🦌	cervo
+🦍	gorila
+🦎	lagartixa
+🦏	rinoceronte
+🦐	camarão
+🦑	lula
+🦒	girafa
+🦓	zebra
+🦔	porco-espinho
+🦕	saurópode
+🦖	tiranossauro rex
+🦗	grilo
+🦘	canguru
+🦙	lhama
+🦚	pavão
+🦛	hipopótamo
+🦜	papagaio
+🦝	guaxinim
+🦞	lagosta
+🦟	mosquito
+🦠	micróbio
+🦡	texugo
+🦢	cisne
+🦣	mamute
+🦤	dodô
+🦥	preguiça
+🦦	lontra
+🦧	orangotango
+🦨	gambá
+🦩	flamingo
+🦪	ostra
+🦫	castor
+🦬	bisão
+🦭	foca
+🦮	cão-guia
+🦯	bengala para cegos
+🦰	cabelo vermelho
+🦱	cabelo cacheado
+🦲	careca
+🦳	cabelo branco
+🦴	osso
+🦵	perna
+🦶	pé
+🦷	dente
+🦸	super-herói
+🦹	supervilão
+🦺	colete salva-vidas
+🦻	ouvido com aparelho auditivo
+🦼	cadeira de rodas motorizada
+🦽	cadeira de rodas manual
+🦾	braço mecânico
+🦿	perna mecânica
+🧀	queijo
+🧁	cupcake
+🧂	sal
+🧃	suco de caixa
+🧄	alho
+🧅	cebola
+🧆	falafel
+🧇	waffle
+🧈	manteiga
+🧉	mate
+🧊	cubo de gelo
+🧋	chá perolado
+🧌	troll
+🧍	pessoa em pé
+🧎	pessoa ajoelhando
+🧏	pessoa surda
+🧐	rosto com monóculo
+🧑	pessoa
+🧒	criança
+🧓	idoso
+🧔	homem barba
+🧕	mulher com véu
+🧖	pessoa na sauna
+🧗	pessoa escalando
+🧘	pessoa na posição de lótus
+🧙	mago
+🧚	fada
+🧛	vampiro
+🧜	pessoa sereia
+🧝	elfo
+🧞	gênio
+🧟	zumbi
+🧠	cérebro
+🧡	coração laranja
+🧢	boné
+🧣	cachecol
+🧤	luvas
+🧥	casaco
+🧦	meias
+🧧	envelope vermelho
+🧨	bombinha
+🧩	quebra-cabeça
+🧪	tubo de ensaio
+🧫	placa de Petri
+🧬	dna
+🧭	bússola
+🧮	ábaco
+🧯	extintor de incêndio
+🧰	caixa de ferramentas
+🧱	tijolo
+🧲	ímã
+🧳	mala
+🧴	frasco de loção
+🧵	carretel
+🧶	novelo
+🧷	alfinete de segurança
+🧸	ursinho de pelúcia
+🧹	vassoura
+🧺	cesta
+🧻	rolo de papel
+🧼	sabonete
+🧽	esponja
+🧾	recibo
+🧿	olho grego
+🩰	sapatilha de balé
+🩱	maiô
+🩲	cueca
+🩳	shorts
+🩴	chinelo
+🩵	coração azul-claro
+🩶	coração cinza
+🩷	coração rosa
+🩸	gota de sangue
+🩹	atadura adesiva
+🩺	estetoscópio
+🩻	raio x
+🩼	muleta
+🪀	ioiô
+🪁	pipa
+🪂	paraquedas
+🪃	bumerangue
+🪄	varinha mágica
+🪅	pinhata
+🪆	boneca russa
+🪇	maracás
+🪈	flauta
+🪉	harpa
+🪊	trombone
+🪎	baú de tesouro
+🪏	pá
+🪐	planeta com anéis
+🪑	cadeira
+🪒	lâmina
+🪓	machado
+🪔	lâmpada de óleo
+🪕	banjo
+🪖	capacete militar
+🪗	acordeão
+🪘	tambor comprido
+🪙	moeda
+🪚	serrote
+🪛	chave de fenda
+🪜	escada
+🪝	gancho
+🪞	espelho
+🪟	janela
+🪠	desentupidor
+🪡	agulha de costura
+🪢	nó
+🪣	balde
+🪤	ratoeira
+🪥	escova de dentes
+🪦	lápide
+🪧	placa
+🪨	pedra
+🪩	globo de espelhos
+🪪	cartão de identificação
+🪫	pouca bateria
+🪬	hamsá
+🪭	leque dobrável
+🪮	pente de cabelo
+🪯	khanda
+🪰	mosca
+🪱	minhoca
+🪲	besouro
+🪳	barata
+🪴	vaso com planta
+🪵	madeira
+🪶	pena
+🪷	lótus
+🪸	coral
+🪹	ninho vazio
+🪺	ninho com ovos
+🪻	jacinto
+🪼	água-viva
+🪽	asa
+🪾	árvore seca
+🪿	ganso
+🫀	coração humano
+🫁	pulmões
+🫂	pessoas se abraçando
+🫃	homem grávido
+🫄	pessoa grávida
+🫅	pessoa com coroa
+🫆	impressão digital
+🫈	criatura peluda
+🫍	orca
+🫎	alce
+🫏	burro
+🫐	mirtilos
+🫑	pimentão
+🫒	azeitona
+🫓	pão sírio
+🫔	tamale
+🫕	fondue
+🫖	bule
+🫗	derramando líquido
+🫘	feijões
+🫙	jarro
+🫚	gengibre
+🫛	vagem
+🫜	tubérculo
+🫟	respingo
+🫠	rosto derretendo
+🫡	rosto saudando
+🫢	rosto com olhos abertos e mão sobre a boca
+🫣	rosto com olho espiando
+🫤	rosto com boca diagonal
+🫥	rosto com linha pontilhada
+🫦	mordendo o lábio
+🫧	bolhas
+🫨	rosto tremendo
+🫩	rosto com olheiras
+🫪	rosto distorcido
+🫯	nuvem de briga
+🫰	mão com dedo indicador e polegar cruzados
+🫱	mão para a direita
+🫲	mão para a esquerda
+🫳	mão com a palma para baixo
+🫴	mão com a palma para cima
+🫵	indicador apontando para o visualizador
+🫶	mãos de coração
+🫷	mão empurrando para a esquerda
+🫸	mão empurrando para a direita

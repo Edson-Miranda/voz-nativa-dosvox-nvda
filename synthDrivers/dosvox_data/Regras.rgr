@@ -1,4 +1,21 @@
-;versão 6.58 (!)=!|
+; Um trabalho iniciado por Glauco Férius e continuado por Lucas Antonio
+; Última atualização em 23/07/2023
+; use os parâmetros abaixo, mas observe as letras maiúsculas
+; sinal colocado a direita
+; [ = fim da silaba
+; * = consoante muda 
+; + = e ou i 
+; % = limite da palavra 
+; # = vogal
+; \ = s
+; & = lmnrz
+; sinal colocado a esquerda
+; % = limite da palavra
+; # = vogal
+; ] = a ou o
+; _ = vogal ou inicio da palavra
+; | = antecessor l
+; Fim dos parâmetros
 (!)=!|
 (,)=,|
 (-)=-|
@@ -3678,7 +3695,7 @@ REP(E)SCO%=E|
 P(E)SQUEIRA%=e^|
 P(E)SQUEM%=E|
 P(E)SQUIS%=e^|
-P(E)SQ=E|
+P(E)SQ=E^|
 %D(E)SDA=E^|
 %D(E)SDE%=E^|
 %D(E)SDE'=e^|
@@ -9898,7 +9915,7 @@ X(O)ZINH=o|
 %(ON)DA=/O^~/|
 %(ON)DE=/O^~/|
 %H(ON)RA=/O^~/|
-%(ON)[=O~|
+%(ON)[=O^~|
 (ON)[=O~|
 (ON)[=/O~/|
 (O')=O|
@@ -9912,7 +9929,7 @@ X(O)ZINH=o|
 (O^)=O^|
 %(O)%=o^|
 #(O)%=w|
-x(O)%= o^|
+x(O)%=o^|
 (O)\%=w/
 CI(O)IN= o^|
 (O)=o^|

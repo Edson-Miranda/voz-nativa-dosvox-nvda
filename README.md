@@ -1,47 +1,57 @@
-# Voz nativa do Dosvox para NVDA
+# Voz nativa do DOSVOX para NVDA
 
-Add-on de sintetizador para o NVDA baseado nos difones nativos do Dosvox.
+Sintetizador em português para o NVDA baseado na voz nativa do sistema DOSVOX,
+desenvolvido na UFRJ a partir de 1993.
+
+Este é um projeto independente de adaptação para o NVDA. Ele não é um produto
+oficial do Projeto DOSVOX nem da NV Access.
 
 ## Recursos
 
-- variantes Difones, Difones2, Difones3, difones5 e novodifo;
-- controle de velocidade;
-- gravações dedicadas para letras, números e símbolos;
-- distinção entre símbolos reais e seus nomes escritos;
-- compatibilidade testada com o NVDA 2026.1.1.
+- bancos Difones, Difones 2, Difones 3, Difones 5 e Novo difo;
+- reprodução das gravações originais para letras, números e símbolos;
+- conjunto alternativo de letras rápidas;
+- opções Cortafala, Rapidinho e redução de volume;
+- pausas e parâmetros de difones configuráveis em `dosvox.ini`;
+- interrupção responsiva e síntese em fluxo para textos longos;
+- tratamento de números, horários, valores em reais, pontuação e símbolos;
+- integração com soletração e Ajuda de Entrada do NVDA.
 
 ## Estrutura
 
-- `manifest.ini`: metadados e compatibilidade do add-on;
+- `manifest.ini`: identificação e compatibilidade do complemento;
 - `synthDrivers/vozNativaDoDosvox.py`: integração com o NVDA;
-- `synthDrivers/dosvox_native_core.py`: síntese, símbolos e processamento de texto;
-- `synthDrivers/dosvox_data/`: bancos de difones e regras;
-- `synthDrivers/Letras/`: gravações dedicadas;
-- `doc/pt_BR/readme.html`: documentação exibida pelo NVDA;
-- `tests/`: testes de regressão;
+- `synthDrivers/dosvox_data/dosvox_native_core.py`: núcleo da síntese;
+- `synthDrivers/dosvox_data/`: bancos, regras, configuração e gravações;
+- `doc/pt_BR/readme.html`: ajuda exibida pelo NVDA;
+- `tests/`: verificações automáticas;
 - `build_nvda_addon.py`: geração do pacote instalável.
 
-## Testes
+## Testar e gerar o pacote
 
-Requer Python 3. Execute:
+Requer Python 3.
 
 ```powershell
 python .\tests\run_tests.py
-```
-
-## Compilação
-
-```powershell
 python .\build_nvda_addon.py
 ```
 
-O pacote será criado em `dist/`. Essa pasta não é versionada; os pacotes publicados devem ser anexados às versões na página de Releases do GitHub.
+O pacote é criado em `dist/`. A pasta é ignorada pelo Git; arquivos publicados
+devem ser anexados a uma versão do repositório.
 
 ## Instalação
 
-Abra o arquivo `.nvda-addon` com o NVDA em execução, confirme a instalação e reinicie o NVDA.
+Abra o arquivo `.nvda-addon` com o NVDA em execução, confirme a instalação e
+reinicie o NVDA. Selecione depois “Voz nativa do DOSVOX” em Preferências,
+Configurações, Fala, Sintetizador.
 
-## Licenciamento
+## Autoria e origem
 
-Antes de publicar este repositório como público, confirme as condições de redistribuição dos bancos de difones, regras e gravações originados do Dosvox. Nenhuma licença nova é atribuída a esses arquivos por este repositório.
+- adaptação para o NVDA: Edson Miranda
+  (`edson.demiranda.melo@gmail.com`);
+- sistema e voz de origem: Projeto DOSVOX, desenvolvido no NCE/UFRJ a partir
+  de 1993.
 
+Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md) antes de redistribuir.
+O fato de o DOSVOX ser oferecido gratuitamente não estabelece, por si só, uma
+licença para republicar seus bancos de voz e gravações em outro produto.

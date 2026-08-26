@@ -1,12 +1,12 @@
-import test_symbols
+import test_core
 
 
 TESTS = [
-    test_symbols.test_written_symbol_names_remain_words,
-    test_symbols.test_real_numbers_and_symbols_can_still_use_recordings,
-    test_symbols.test_source_symbols_are_marked_without_confusing_written_names,
-    test_symbols.test_nvda_pt_br_spelling_names_resolve_to_real_symbols,
-    test_symbols.test_all_reported_symbols_have_dedicated_recordings,
+    test_core.test_manifest_and_package_metadata,
+    test_core.test_voice_variants_and_data_layout,
+    test_core.test_number_expansion,
+    test_core.test_recorded_ascii_symbols_and_space,
+    test_core.test_fast_letters_are_available,
 ]
 
 
@@ -15,4 +15,3 @@ if __name__ == "__main__":
         test()
         print("OK:", test.__name__)
     print(f"{len(TESTS)} testes concluídos com sucesso.")
-

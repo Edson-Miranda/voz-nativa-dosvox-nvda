@@ -10,4 +10,4 @@
 *.WAV binary
 *.dif binary
 *.ind binary
-
+*.dic text eol=lf
