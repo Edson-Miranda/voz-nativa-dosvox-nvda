@@ -52,6 +52,6 @@ Configurações, Fala, Sintetizador.
 - sistema e voz de origem: Projeto DOSVOX, desenvolvido no NCE/UFRJ a partir
   de 1993.
 
-Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md) antes de redistribuir.
-O fato de o DOSVOX ser oferecido gratuitamente não estabelece, por si só, uma
-licença para republicar seus bancos de voz e gravações em outro produto.
+Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md). A utilização e
+redistribuição dos áudios e dados do DOSVOX neste complemento foram autorizadas
+por Antônio Borges, conforme permissão confirmada pelo mantenedor Edson Miranda.

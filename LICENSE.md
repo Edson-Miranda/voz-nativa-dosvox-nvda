@@ -4,12 +4,11 @@ O código original desta adaptação para o NVDA é disponibilizado sob a licen�
 GNU General Public License, versão 2.0 apenas (GPL-2.0-only), por ser um
 complemento que utiliza a API do NVDA.
 
-Os bancos `.dif`/`.ind`, regras, exceções, dicionários e arquivos `.wav`
-originários do DOSVOX não são relicenciados por este documento. Os direitos
-sobre esses materiais permanecem com seus respectivos titulares. A sua
-redistribuição pública neste repositório ou no pacote `.nvda-addon` depende de
-autorização compatível com essa distribuição.
+Os bancos `.dif`/`.ind`, regras, exceções, dicionários e arquivos `.wav` têm
+origem no Projeto DOSVOX. A redistribuição desses materiais como parte deste
+complemento foi autorizada por Antônio Borges, conforme permissão comunicada ao
+mantenedor Edson Miranda e confirmada por ele em 26 de agosto de 2026.
 
-Enquanto essa autorização não estiver documentada, este repositório deve
-permanecer local ou privado e o pacote não deve ser submetido à Loja de
-Complementos do NVDA.
+Essa autorização de redistribuição não altera a titularidade dos materiais do
+DOSVOX nem os coloca automaticamente sob a GPL. O aviso de origem deve ser
+preservado nas cópias deste complemento.
