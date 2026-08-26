@@ -1,5 +1,7 @@
 # Voz nativa do DOSVOX para NVDA
 
+Documentação em inglês: [README.en.md](README.en.md).
+
 Sintetizador em português para o NVDA baseado na voz nativa do sistema DOSVOX,
 desenvolvido na UFRJ a partir de 1993.
 
@@ -49,9 +51,15 @@ Configurações, Fala, Sintetizador.
 
 - adaptação para o NVDA: Edson Miranda
   (`edson.demiranda.melo@gmail.com`);
+- melhorias integradas na versão 2.1.1: Lucas Antônio, incluindo a restauração
+  da gravação do espaço, ajustes no fluxo de áudio com Letras e LetrasRapidas,
+  correções no fatiamento do texto e a remoção de controles numéricos
+  inadequados do painel de voz;
 - sistema e voz de origem: Projeto DOSVOX, desenvolvido no NCE/UFRJ a partir
   de 1993.
 
 Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md). A utilização e
 redistribuição dos áudios e dados do DOSVOX neste complemento foram autorizadas
 por Antônio Borges, conforme permissão confirmada pelo mantenedor Edson Miranda.
+
+Para colaborar com o desenvolvimento, consulte [CONTRIBUTING.md](CONTRIBUTING.md).

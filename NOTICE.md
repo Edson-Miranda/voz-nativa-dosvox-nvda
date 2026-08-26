@@ -14,3 +14,8 @@ foram autorizadas por Antônio Borges, conforme permissão comunicada ao
 mantenedor Edson Miranda e confirmada por ele em 26 de agosto de 2026.
 
 Adaptação para o NVDA: Edson Miranda, `edson.demiranda.melo@gmail.com`.
+
+Lucas Antônio contribuiu com melhorias incorporadas à versão 2.1.1, incluindo
+a restauração da gravação do espaço, ajustes no fluxo de áudio com as pastas
+Letras e LetrasRapidas, correções no fatiamento do texto e a remoção de
+controles numéricos inadequados do painel de voz.
