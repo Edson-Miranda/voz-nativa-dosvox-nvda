@@ -2473,7 +2473,6 @@ def get_available_voice_variants(module_dir):
         "Difones2": "Difones 2",
         "Difones3": "Difones 3",
         "difones5": "Difones 5",
-        "novodifo": "Novo difo",
     }
     for entry in os.listdir(data_dir):
         if not entry.lower().endswith(".ind"):

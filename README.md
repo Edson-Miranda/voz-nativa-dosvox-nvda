@@ -8,7 +8,7 @@ oficial do Projeto DOSVOX nem da NV Access.
 
 ## Recursos
 
-- bancos Difones, Difones 2, Difones 3, Difones 5 e Novo difo;
+- bancos Difones, Difones 2, Difones 3 e Difones 5;
 - reprodução das gravações originais para letras, números e símbolos;
 - conjunto alternativo de letras rápidas;
 - opções Cortafala, Rapidinho e redução de volume;

@@ -30,8 +30,7 @@ def test_manifest_and_package_metadata():
 
 def test_voice_variants_and_data_layout():
     variants = get_available_voice_variants(str(ROOT / "synthDrivers"))
-    assert set(variants) == {"Difones", "Difones2", "Difones3", "difones5", "novodifo"}
-    assert variants["novodifo"] == "Novo difo"
+    assert set(variants) == {"Difones", "Difones2", "Difones3", "difones5"}
     assert (ROOT / "synthDrivers" / "dosvox_data" / "dosvox_native_core.py").is_file()
     assert not (ROOT / "synthDrivers" / "dosvox_native_core.py").exists()
 
