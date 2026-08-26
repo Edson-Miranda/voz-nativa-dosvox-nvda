@@ -9,9 +9,12 @@ arquivos distribuídos com o DOSVOX. DOSVOX é a identificação do projeto de
 origem; este complemento é independente e não afirma ser uma versão oficial do
 Projeto DOSVOX, da UFRJ ou da NV Access.
 
-A utilização e redistribuição dos áudios e dados do DOSVOX neste complemento
-foram autorizadas por Antônio Borges, conforme permissão comunicada ao
-mantenedor Edson Miranda e confirmada por ele em 26 de agosto de 2026.
+Com base em manifestações anteriores na lista VoxTec, o mantenedor entendeu
+que não havia objeção ao uso e à redistribuição desses materiais com a devida
+atribuição. Em 26 de agosto de 2026, após o envio do complemento para avaliação
+na loja oficial de complementos do NVDA, foi solicitada a Antônio Borges uma
+confirmação expressa dessa autorização. Este aviso será atualizado quando essa
+confirmação for recebida.
 
 Adaptação para o NVDA: Edson Miranda, `edson.demiranda.melo@gmail.com`.
 
