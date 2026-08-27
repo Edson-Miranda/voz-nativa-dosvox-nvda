@@ -55,14 +55,12 @@ Configurações, Fala, Sintetizador.
   da gravação do espaço, ajustes no fluxo de áudio com Letras e LetrasRapidas,
   correções no fatiamento do texto e a remoção de controles numéricos
   inadequados do painel de voz;
-- sistema e voz de origem: Projeto DOSVOX, desenvolvido no NCE/UFRJ a partir
-  de 1993.
+- sistema de origem: Projeto DOSVOX, desenvolvido no NCE/UFRJ a partir de 1993;
+- voz nativa do DOSVOX: criada originalmente por José Antônio dos Santos Borges.
 
-Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md). Com base em
-manifestações anteriores na lista VoxTec, o mantenedor entendeu que não havia
-objeção ao uso e à redistribuição desses materiais com a devida atribuição.
-Como o complemento foi enviado para avaliação na loja oficial de complementos
-do NVDA, foi solicitada em 26 de agosto de 2026 uma confirmação expressa dessa
-autorização a Antônio Borges.
+Consulte [NOTICE.md](NOTICE.md) e [LICENSE.md](LICENSE.md). José Antônio dos
+Santos Borges autorizou a utilização e a redistribuição, neste complemento, dos
+materiais necessários da voz nativa do DOSVOX, com a condição de que seja
+preservado o crédito de que a voz foi criada originalmente por ele.
 
 Para colaborar com o desenvolvimento, consulte [CONTRIBUTING.md](CONTRIBUTING.md).
