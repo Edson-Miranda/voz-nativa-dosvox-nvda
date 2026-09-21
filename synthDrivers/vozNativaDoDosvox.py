@@ -6,20 +6,24 @@ import os
 import queue
 import re
 import threading
+import time
 import unicodedata
 
 import nvwave
 import synthDriverHandler
 from autoSettingsUtils.driverSetting import BooleanDriverSetting, DriverSetting
-from speech.commands import BreakCommand, CallbackCommand, CharacterModeCommand, IndexCommand, SynthCommand
+from speech.commands import (
+    BreakCommand,
+    CallbackCommand,
+    CharacterModeCommand,
+    EndUtteranceCommand,
+    IndexCommand,
+    SynthCommand,
+)
 from speech.extensions import filter_speechSequence
 
 addonHandler.initTranslation()
 log = logHandler.log
-# Renova o objeto de audio a cada N trechos falados, so em leituras
-# continuas longas (ver _run), como mitigacao para as pausas que crescem
-# aos poucos ao longo de muitos minutos de leitura sem parar.
-RENOVAR_PLAYER_A_CADA = 40
 
 MODULE_DIR = os.path.dirname(__file__)
 # dosvox_native_core.py mora dentro de dosvox_data, junto com os dados que ele
@@ -238,11 +242,50 @@ KEY_NAME_TO_CHAR = {
     "bullet": "\u2022",
 }
 
+# Quais caracteres, num dado nivel de simbolos, de fato seriam separados do
+# texto por split_source_symbols. Montada sob demanda e guardada por nivel: a
+# tabela nao muda enquanto o nivel nao muda.
+_CANDIDATOS_POR_NIVEL = {}
+
+
+def _regex_de_candidatos(symbol_level):
+    regex = _CANDIDATOS_POR_NIVEL.get(symbol_level)
+    if regex is None:
+        caracteres = sorted({
+            ch
+            for ch in set(TYPED_SYMBOL_NAMES) | set(SYMBOL_WORDS)
+            if isinstance(ch, str)
+            and len(ch) == 1
+            and ch not in PONTUACAO_COM_PAUSA_PROPRIA
+            and symbol_level >= SYMBOL_SPEAK_LEVELS.get(ch, 300)
+        })
+        regex = (
+            re.compile("[" + re.escape("".join(caracteres)) + "]")
+            if caracteres
+            else False
+        )
+        _CANDIDATOS_POR_NIVEL[symbol_level] = regex
+    return regex or None
+
+
 def split_source_symbols(text, symbol_level=300):
     """Split real source symbols from text before NVDA expands their names."""
+    source_text = str(text or "")
+    if not source_text:
+        return []
+    # REJEICAO BARATA, PRIMEIRO.
+    #
+    # O laco abaixo percorre a string caractere a caractere em bytecode Python,
+    # e ele rodava para TODA fala, na thread principal do NVDA. Numa linha longa
+    # de leitura continua isso e' trabalho interpretado proporcional ao tamanho
+    # do texto antes de qualquer audio existir. Uma unica varredura em C decide
+    # se ha' sequer um candidato; quando nao ha', que e' o caso da prosa comum,
+    # o texto sai inteiro sem laco nenhum.
+    regex = _regex_de_candidatos(symbol_level)
+    if regex is None or not regex.search(source_text):
+        return [("text", source_text)]
     parts = []
     text_buffer = []
-    source_text = str(text or "")
     for index, character in enumerate(source_text):
         # Keep numeric separators inside the text so the numeric preprocessor
         # can recognize dates, times and decimal/grouped values before symbol
@@ -329,6 +372,12 @@ _ELLIPSIS_RE = re.compile(r"\.{3,}|\u2026")
 # tambem -- mas so ela, nao a lista inteira de nomes de simbolos, que
 # causava falsos positivos em frases comuns como "entre aspas".
 _ELLIPSIS_WORD_RE = re.compile(r"\breticências\b|\breticencias\b", re.IGNORECASE | re.UNICODE)
+_TEM_DIGITO_RE = re.compile(r"\d")
+
+_ELLIPSIS_OR_WORD_RE = re.compile(
+    "(?:" + _ELLIPSIS_RE.pattern + ")|(?:" + _ELLIPSIS_WORD_RE.pattern + ")",
+    re.IGNORECASE | re.UNICODE,
+)
 
 def split_literal_symbols(text, pausa_ponto=PAUSAS_PADRAO.ponto):
     """Reconstroi, em qualquer lugar do texto, apenas o que e seguro
@@ -341,16 +390,18 @@ def split_literal_symbols(text, pausa_ponto=PAUSAS_PADRAO.ponto):
     Devolve uma lista de tuplas ("text", trecho) e ("character", ".").
     """
     text = str(text or "")
-    text = reconstruct_numeric_separators(text)
-    text = reconstruct_domain_dots(text)
-    text = reconstruct_reais(text)
-    combined_re = re.compile(
-        "(?:" + _ELLIPSIS_RE.pattern + ")|(?:" + _ELLIPSIS_WORD_RE.pattern + ")",
-        re.IGNORECASE | re.UNICODE,
-    )
+    # Cada uma destas reconstrucoes so' e' tentada quando ha' chance real de
+    # casar. Antes as tres substituicoes rodavam sempre, inclusive nas frases
+    # (a maioria) onde nao ha digito, nem cifrao, nem a palavra "ponto".
+    if _TEM_DIGITO_RE.search(text):
+        text = reconstruct_numeric_separators(text)
+    if "onto" in text or "ONTO" in text:
+        text = reconstruct_domain_dots(text)
+    if "$" in text:
+        text = reconstruct_reais(text)
     parts = []
     pos = 0
-    for match in combined_re.finditer(text):
+    for match in _ELLIPSIS_OR_WORD_RE.finditer(text):
         if match.start() > pos:
             parts.append(("text", text[pos:match.start()]))
         # Replica trataPontuacao (dvwin.pas) para "...": cada ponto so eh
@@ -431,75 +482,78 @@ def _esta_entre_aspas(speech_sequence, index, total):
     return False
 
 
-def _juntar_palavras_divididas_pelo_nvda(speech_sequence):
-    resultado = []
-    i = 0
+def _juntar_itens_da_sequencia(speech_sequence):
+    """Desfaz, numa unica passada, as duas fragmentacoes que o NVDA introduz.
+
+    Antes eram duas funcoes, cada uma reconstruindo a lista inteira: duas
+    alocacoes por fala, na thread principal. Agora e' uma passada so', e a
+    lista original e' devolvida intacta quando nada precisou mudar, que e' o
+    caso comum.
+
+    1. SIGLA MAIS SUFIXO. O NVDA, em certas situacoes, separa uma palavra com
+       transicao de maiuscula para minuscula (tipo "PDFs") em dois itens
+       adjacentes, comportamento pensado para identificadores de codigo
+       (camelCase), mas que atrapalha plurais de sigla. So junta quando o
+       primeiro pedaco tem duas letras ou mais e e' TODO maiusculo (uma sigla
+       de verdade, nao um artigo como "A" sozinho) e o segundo e' um sufixo
+       curto e todo minusculo.
+
+    2. HIFEN MAIS NUMERO. Se o NVDA entregar o hifen (ou a palavra substituta)
+       como um ITEM SEPARADO, a reconstrucao textual do nucleo, que so olha
+       dentro de uma string, nunca chega a ver os dois juntos. Aqui a juncao
+       acontece direto na lista bruta.
+    """
     total = len(speech_sequence)
+    resultado = None
+    i = 0
     while i < total:
         item = speech_sequence[i]
-        eh_sigla = (
-            isinstance(item, str)
-            and len(item) >= 2
-            and item.isalpha()
-            and item.isupper()
-        )
-        if eh_sigla and i + 1 < total:
+        juntado = None
+        if isinstance(item, str) and i + 1 < total:
             proximo = speech_sequence[i + 1]
-            if isinstance(proximo, str) and _SUFIXO_MINUSCULO_CURTO_RE.match(proximo):
-                resultado.append(item + proximo)
-                i += 2
-                continue
-        resultado.append(item)
+            if isinstance(proximo, str):
+                if (
+                    len(item) >= 2
+                    and item.isalpha()
+                    and item.isupper()
+                    and _SUFIXO_MINUSCULO_CURTO_RE.match(proximo)
+                ):
+                    juntado = item + proximo
+                elif item.strip().lower() in _PALAVRAS_HIFEN and proximo[:1].isdigit():
+                    juntado = "-" + proximo
+        if juntado is not None:
+            if resultado is None:
+                resultado = list(speech_sequence[:i])
+            resultado.append(juntado)
+            i += 2
+            continue
+        if resultado is not None:
+            resultado.append(item)
         i += 1
-    return resultado
+    return speech_sequence if resultado is None else resultado
 
 
-# Segunda camada de protecao para o sinal de menos: se o NVDA entregar o
-# hifen (ou a palavra substituta -- traco/hifen/menos) como um ITEM
-# SEPARADO da lista, antes mesmo do texto virar uma string so, a
-# reconstrucao textual do nucleo (que so olha dentro de uma string) nunca
-# chega a ver os dois juntos. Aqui a juncao acontece direto na lista
-# bruta: um item que e exatamente "-" (ou uma dessas palavras, sozinha),
-# seguido imediatamente por um item que comeca com digito, vira um unico
-# item colado, sem espaco, pronto para o reconhecimento de sinal de menos
-# que ja existe no nucleo pegar corretamente.
+# Palavras que o NVDA pode entregar no lugar do hifen, como item proprio.
 _PALAVRAS_HIFEN = {"-", "traco", "traço", "hifen", "hífen", "menos"}
 
 
-def _juntar_hifen_com_numero(speech_sequence):
-    resultado = []
-    i = 0
-    total = len(speech_sequence)
-    while i < total:
-        item = speech_sequence[i]
-        eh_hifen = isinstance(item, str) and item.strip().lower() in _PALAVRAS_HIFEN
-        if eh_hifen and i + 1 < total:
-            proximo = speech_sequence[i + 1]
-            if isinstance(proximo, str) and proximo[:1].isdigit():
-                resultado.append("-" + proximo)
-                i += 2
-                continue
-        resultado.append(item)
-        i += 1
-    return resultado
-
-
 # O motor de fonetica ja reduz qualquer palavra para minusculo antes de
-# aplicar as regras (a unica letra que fica maiuscula por dentro e
-# calculada pela propria marcacao de tonica, nunca herdada do texto de
-# entrada) -- entao normalizar a caixa do texto aqui nao tem como estragar
-# nenhuma regra fonetica. Isso e uma rede de seguranca mais ampla que a
-# juncao acima: quando o NVDA fragmenta uma palavra por transicao de
-# maiuscula para minuscula (pensado para identificadores de codigo, tipo
-# "minhaVariavel"), pode sobrar um pedaco de caixa mista esquisito -- por
-# exemplo "Fs" dentro de "PDFs" -- que soa errado se processado como se
-# fosse uma palavra normal. Palavras totalmente minusculas ou totalmente
-# maiusculas ficam como estao; so a mistura genuina (um pedaco com as duas
-# caixas juntas) e normalizada para minuscula.
+# aplicar as regras, entao normalizar a caixa do texto aqui nao tem como
+# estragar nenhuma regra fonetica. Quando o NVDA fragmenta uma palavra por
+# transicao de maiuscula para minuscula, pode sobrar um pedaco de caixa mista
+# esquisito (por exemplo "Fs" dentro de "PDFs") que soa errado se processado
+# como se fosse uma palavra normal. Palavras totalmente minusculas ou
+# totalmente maiusculas ficam como estao.
 _LETRAS_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]+")
 
 
 def _normalizar_fragmentos_de_caixa_mista(texto):
+    # Guarda barata: sem nenhuma maiuscula nao ha o que normalizar, e a
+    # comparacao abaixo e' feita inteira em C, enquanto a substituicao chama
+    # uma funcao Python uma vez por palavra.
+    if texto == texto.lower():
+        return texto
+
     def _normalizar(match):
         fragmento = match.group(0)
         if fragmento.isupper() or fragmento.islower():
@@ -519,6 +573,127 @@ class DosvoxSourceSymbolCommand(SynthCommand):
         return "DosvoxSourceSymbolCommand(%r)" % self.character
 
 
+# ==========================================================================
+#  COMO ESTE DRIVER CONVERSA COM O NVDA
+# --------------------------------------------------------------------------
+#  Tres papeis, e nenhum deles invade o do outro:
+#
+#  1. A thread principal do NVDA so' ENFILEIRA. speak() copia a sequencia e
+#     volta; cancel() incrementa um contador, esvazia a fila e manda o tocador
+#     parar. Nenhuma sintese, nenhum regex pesado, nenhuma abertura de
+#     dispositivo de audio acontece aqui. Era isto que fazia o teclado parecer
+#     pesado: o NVDA chama cancel() uma vez por tecla.
+#
+#  2. A thread de sintese e' a UNICA dona do motor de voz e do tocador. Ela
+#     sintetiza, entrega o audio e cria ou troca o tocador quando preciso.
+#     Como ninguem mais toca nesses objetos, nao ha corrida nenhuma a
+#     proteger -- inclusive as mudancas de ajuste (variante, cortafala,
+#     rapidinho) viajam ate' aqui como comandos na mesma fila da fala, e por
+#     isso nunca acontecem no meio de uma elocucao.
+#
+#  3. A thread vigia existe para uma coisa so': garantir que um indice nunca
+#     se perca. Ver _Rastreador abaixo.
+#
+#  O QUE NUNCA SE FAZ AQUI:
+#
+#  * player.sync() na thread de sintese. Bloquear ate' o audio drenar deixava
+#    a thread parada durante toda a reproducao (nada era preparado adiante, e
+#    as pausas entre trechos cresciam), e criava a corrida classica entre
+#    sync() e o stop() da thread principal, que ja' travou o proprio NVDA no
+#    passado. O fim da fala agora e' avisado pelo retorno de chamada do ultimo
+#    bloco de audio, que e' exatamente o momento certo.
+#
+#  * Trocar o tocador periodicamente. A versao anterior abria um dispositivo
+#    de audio novo a cada 40 trechos para mascarar o crescimento das pausas.
+#    Isso descartava, junto com o tocador velho, os retornos de chamada de
+#    indice ainda pendentes -- e um indice perdido e' exatamente uma leitura
+#    continua que para sozinha. A causa das pausas era o sync(); sem ele, a
+#    troca periodica nao tem mais razao de existir e saiu.
+# ==========================================================================
+
+# Quanto audio se acumula antes de entregar ao dispositivo. O PRIMEIRO bloco e'
+# pequeno porque e' o unico que alguem espera antes de ouvir qualquer coisa; os
+# seguintes sao grandes, porque ja' sao preparados enquanto o anterior toca, e
+# blocos grandes significam menos chamadas ao dispositivo de audio.
+_PRIMEIRO_BLOCO = 1024
+_BLOCO_ALVO = 8192
+
+# Quantas vezes insistir na entrega de um bloco antes de desistir dele. Copiado
+# do driver do IBMTTS, que trata o dispositivo de audio como algo que falha de
+# vez em quando e se recupera, em vez de algo que ou funciona ou perde a fala.
+_TENTATIVAS_DE_ENTREGA = 10
+
+# Folga, em segundos, somada a duracao do audio ainda por tocar antes de o
+# vigia considerar que um retorno de chamada se perdeu.
+_FOLGA_DO_VIGIA = 3.0
+
+# De quanto em quanto tempo, no maximo, vale a pena perguntar ao sistema de
+# arquivos se o dosvox.ini mudou. Antes isso era um os.path.getmtime por
+# elocucao, ou seja, dezenas de idas ao disco por minuto de leitura.
+_INTERVALO_CHECAGEM_INI = 2.0
+
+
+class _Rastreador:
+    """Garante que todo evento de sincronismo de uma elocucao seja disparado.
+
+    Evento aqui e' um indice (synthIndexReached) ou um CallbackCommand. O NVDA
+    nao tem outra forma de saber onde a fala esta: a leitura continua, o
+    acompanhamento do cursor e o proprio enfileiramento da proxima frase
+    dependem disso, mais o synthDoneSpeaking uma vez no fim. Um unico evento
+    que nao chega faz a leitura parar em silencio, sem erro nenhum no log --
+    que e' precisamente o sintoma que este objeto existe para tornar
+    impossivel.
+
+    A regra e' simples e nao tem excecao: enquanto a elocucao nao foi
+    cancelada, todo evento registrado acontece, pelo caminho normal (o retorno
+    de chamada do bloco de audio correspondente) ou pelo caminho de emergencia
+    (falha na entrega, erro inesperado, ou o vigia percebendo que o retorno de
+    chamada nunca veio). Acontece tarde, se preciso, mas acontece.
+    """
+
+    __slots__ = ("_driver", "_geracao", "_lock", "_pendentes", "_fim")
+
+    def __init__(self, driver, geracao):
+        self._driver = driver
+        self._geracao = geracao
+        self._lock = threading.Lock()
+        self._pendentes = []
+        self._fim = False
+
+    def registrar(self, evento):
+        with self._lock:
+            if not self._fim:
+                self._pendentes.append(evento)
+
+    def liberar(self, quantos, final=False):
+        with self._lock:
+            if self._fim:
+                return
+            if final:
+                saida = self._pendentes
+                self._pendentes = []
+                self._fim = True
+            else:
+                saida = self._pendentes[:quantos]
+                del self._pendentes[:quantos]
+        driver = self._driver
+        if not driver._cancelado(self._geracao):
+            for evento in saida:
+                evento()
+            if final:
+                driver._avisar_fim()
+        if final:
+            driver._desarmar_vigia(self)
+
+    def forcar_fim(self):
+        self.liberar(0, final=True)
+
+    @property
+    def terminado(self):
+        with self._lock:
+            return self._fim
+
+
 class SynthDriver(synthDriverHandler.SynthDriver):
     name = "vozNativaDoDosvox"
     description = _("Voz nativa do DOSVOX")
@@ -534,26 +709,15 @@ class SynthDriver(synthDriverHandler.SynthDriver):
     # classe base a ignora e o saveSettings tambem. As quatro continuam
     # aparecendo normalmente no painel de voz -- so nao sao persistidas la.
     #
-    # Quem persiste somos nos, sobrescrevendo saveSettings e loadSettings mais
-    # abaixo: tudo vai para o dosvox.ini, que passa a ser a unica memoria do
-    # complemento.
-    #
-    # (useConfig existe desde sempre em DriverSetting, e o NVDA passou a
-    # respeita-lo corretamente em sintetizadores a partir do 2023.1.)
+    # Quem persiste somos nos: tudo vai para o dosvox.ini, que e' a unica
+    # memoria do complemento.
     supportedSettings = [
         # ATENCAO: NAO use SynthDriver.VariantSetting() aqui.
         #
         # As fabricas do NVDA (VoiceSetting, VariantSetting, RateSetting...) sao
-        # classmethods SEM PARAMETRO NENHUM -- todos os drivers do proprio NVDA
-        # as chamam vazias. Passar useConfig=False para elas levanta um
-        # TypeError no CORPO DA CLASSE, o modulo inteiro deixa de importar, e o
-        # sintomas sao exatamente estes: o sintetizador some da lista e a janela
-        # de sintetizadores toca o som de erro.
-        #
-        # Para ter useConfig=False na variante, monta-se a DriverSetting a mao.
-        # E' o mesmo objeto que a fabrica devolveria, com o id "variant", que e'
-        # o que liga a caixa de selecao aos metodos _get_variant/_set_variant e
-        # a lista availableVariants.
+        # classmethods SEM PARAMETRO NENHUM. Passar useConfig=False para elas
+        # levanta um TypeError no CORPO DA CLASSE, o modulo inteiro deixa de
+        # importar, e o sintoma e' o sintetizador sumir da lista.
         DriverSetting(
             "variant",
             _("V&ariante (banco de difones)"),
@@ -562,13 +726,6 @@ class SynthDriver(synthDriverHandler.SynthDriver):
             displayName=_("Variante"),
             useConfig=False,
         ),
-        # Opcoes booleanas cabem naturalmente no painel de voz do NVDA.
-        #
-        # Os parametros numericos do mecanismo (INTERPAL, CORTEFON, SOBRAFON
-        # e pausas) NAO sao declarados como NumericDriverSetting: no NVDA essa
-        # classe e representada por um slider, que e inadequado para valores
-        # exatos em amostras/milisegundos. Eles continuam sendo lidos do
-        # dosvox.ini, mas ficam deliberadamente fora deste painel.
         BooleanDriverSetting(
             "cortafala",
             _("Cortar &fala (cortafala)"),
@@ -598,6 +755,14 @@ class SynthDriver(synthDriverHandler.SynthDriver):
             useConfig=False,
         ),
     ]
+
+    # O gerenciador de fala do NVDA normalmente converte cada CallbackCommand
+    # num indice proprio e executa a chamada de retorno ele mesmo quando esse
+    # indice e' relatado, de modo que o driver nunca chega a ver uma. Declarar
+    # suporte assim mesmo nao custa nada e cobre o caso contrario: se uma
+    # versao do NVDA entregar a chamada de retorno diretamente, ela e' tratada
+    # aqui com a MESMA garantia de entrega dos indices, em vez de ser
+    # descartada por falta de suporte declarado.
     supportedCommands = {
         DosvoxSourceSymbolCommand,
         IndexCommand,
@@ -614,236 +779,294 @@ class SynthDriver(synthDriverHandler.SynthDriver):
     def check(cls):
         return bool(get_available_voices(MODULE_DIR))
 
+    # ---- construcao e destruicao -------------------------------------------
+
     def __init__(self):
         self._voice = "dosvoxNative"
-        self._queue = queue.Queue()
-        self._cancel_event = threading.Event()
+        self._terminando = False
         self._state_lock = threading.RLock()
-        self._generation = 0
         self._player_lock = threading.RLock()
-        # Contador de trechos falados desde a ultima renovacao do objeto
-        # de audio. Em leituras continuas muito longas, o player pode
-        # acumular algum estado interno do proprio NVDA que faz as pausas
-        # entre trechos crescerem aos poucos -- renovar o player de vez em
-        # quando, sempre entre um trecho e outro (nunca cortando uma fala
-        # no meio), evita esse acumulo sem risco de engasgo audivel.
-        self._trechos_desde_renovacao_player = 0
+        self._generation = 0
+        self._cancel_event = threading.Event()
+        self._queue = queue.Queue()
+
         # A sessao nasce lendo (ou criando) o dosvox.ini, escolhendo o banco de
-        # difones e aplicando os tres ajustes de voz. Depois disto o driver nao
-        # sabe mais nada sobre nada disso: so pede PCM e pergunta a taxa.
-        self._sample_rate = None
-        self._player = None
+        # difones e aplicando os ajustes de voz. Depois disto o driver nao sabe
+        # mais nada sobre nada disso: so pede PCM e pergunta a taxa.
         self._sessao = SessaoDosvox(MODULE_DIR)
         if self._sessao.criou_o_ini:
             log.info("vozNativaDoDosvox: dosvox.ini criado ou migrado em %s"
                      % self._sessao.caminho_ini)
-        self._output_device = self._get_configured_output_device()
-        self._player = self._create_player(self._output_device)
-        self._worker = threading.Thread(target=self._run, daemon=True)
+
+        # Lidos do disco UMA vez. O painel de voz e o anel de configuracoes
+        # consultam estas listas com frequencia, e varrer um diretorio a cada
+        # consulta e' trabalho de disco na thread principal por nada.
+        self._vozes = dict(get_available_voices(MODULE_DIR))
+        self._variantes = dict(get_available_voice_variants(MODULE_DIR))
+        self._sincronizar_sombras()
+
+        self._sample_rate = self._sessao.taxa_saida
+        self._output_device = self._dispositivo_configurado()
+        self._player = self._criar_player(self._output_device)
+        self._ultima_checagem_ini = time.monotonic()
+
+        self._vigia_cond = threading.Condition(threading.Lock())
+        self._vigia_itens = []
+        self._vigia_parar = False
+        self._vigia = threading.Thread(
+            target=self._vigia_loop,
+            name="vozNativaDoDosvox-vigia",
+            daemon=True,
+        )
+        self._vigia.start()
+
+        self._worker = threading.Thread(
+            target=self._run,
+            name="vozNativaDoDosvox-sintese",
+            daemon=True,
+        )
         self._worker.start()
+
         filter_speechSequence.register(self._preserve_source_symbols)
 
-    def _preserve_source_symbols(self, speech_sequence):
-        """Mark real symbols while they still differ from written names."""
-        speech_sequence = _juntar_palavras_divididas_pelo_nvda(speech_sequence)
-        speech_sequence = _juntar_hifen_com_numero(speech_sequence)
+    def terminate(self):
         try:
-            symbol_level = int(config.conf["speech"]["symbolLevel"])
+            filter_speechSequence.unregister(self._preserve_source_symbols)
         except Exception:
-            symbol_level = 300
-        marked = []
-        character_mode = False
-        total = len(speech_sequence)
-        for index, item in enumerate(speech_sequence):
-            if item.__class__.__name__ == "CharacterModeCommand":
-                character_mode = bool(
-                    getattr(item, "state", getattr(item, "enable", getattr(item, "enabled", False)))
-                )
-                marked.append(item)
-                continue
-            if not isinstance(item, str) or character_mode:
-                marked.append(item)
-                continue
-            # QUANDO UMA PALAVRA E' O NOME DE UM SIMBOLO, E QUANDO NAO E'.
-            #
-            # Ao soletrar um simbolo digitado, o NVDA nao manda o caractere:
-            # manda o NOME dele, ja traduzido -- "." vira "ponto", "-" vira
-            # "hifen". Este filtro precisa reconhecer esse nome e devolver o
-            # caractere, para que a voz toque a GRAVACAO em vez de sintetizar a
-            # palavra. O unico sinal que o NVDA da e' que o nome vem seguido de
-            # um EndUtteranceCommand.
-            #
-            # SO QUE ISSO NAO BASTA, e era um bug.
-            #
-            # A condicao antiga era "e' o ultimo texto antes do fim da
-            # elocucao". Mas o NVDA parte uma linha em varios pedacos de texto
-            # sempre que a formatacao muda -- negrito, link, italico. Se a
-            # palavra que calha de ser o nome de um simbolo cair no FIM da
-            # linha, ela era trocada pela gravacao:
-            #
-            #     ["o ", "hifen"]          -> falava o traco, nao a palavra
-            #     ["Isso e um ", "ponto"]  -> falava o ponto, nao a palavra
-            #
-            # E sao 26 palavras comuns do portugues que estao nessa tabela:
-            # ponto, virgula, hifen, barra, aspas, arroba, til, crase, mais,
-            # menos, igual, asterisco, cifrao, porcentagem, espaco...
-            #
-            # A regra certa e' a que o Dosvox precisa e nada alem dela: so
-            # troque se a palavra for TODO o texto da elocucao. Uma soletracao
-            # de simbolo e' exatamente isso -- a elocucao inteira e' o nome, e
-            # mais nada. Uma frase que por acaso termina em "hifen" tem outro
-            # texto antes, e agora e' falada como texto.
-            e_todo_o_texto_da_elocucao = (
-                sum(1 for outro in speech_sequence if isinstance(outro, str)) == 1
-            )
-            next_is_spelling_end = (
-                index + 1 < total
-                and speech_sequence[index + 1].__class__.__name__ == "EndUtteranceCommand"
-            )
-            if (
-                e_todo_o_texto_da_elocucao
-                and next_is_spelling_end
-                and item.strip() == item
-                and not _esta_entre_aspas(speech_sequence, index, total)
-            ):
-                resolved = resolve_named_key(item)
-                if resolved is not None and resolved[0] == "character":
-                    log.debug("vozNativaDoDosvox: %r -> gravacao de %r (soletracao)"
-                              % (item, resolved[1]))
-                    marked.append(DosvoxSourceSymbolCommand(resolved[1]))
-                    continue
-            item = _normalizar_fragmentos_de_caixa_mista(item)
-            # A pausa das reticencias vem da sessao, e nao mais de uma global.
-            for word_kind, word_value in split_literal_symbols(item, self._sessao.pausas.ponto):
-                if word_kind == "character":
-                    marked.append(DosvoxSourceSymbolCommand(word_value))
-                    continue
-                if word_kind == "pause":
-                    marked.append(BreakCommand(time=int(word_value * 1000)))
-                    continue
-                for kind, value in split_source_symbols(word_value, symbol_level):
-                    if kind == "symbol":
-                        marked.append(DosvoxSourceSymbolCommand(value))
-                    elif value:
-                        marked.append(value)
-        return marked
+            pass
+        with self._state_lock:
+            self._terminando = True
+            self._generation += 1
+            self._cancel_event.set()
+        self._descartar_fila()
+        self._desarmar_vigia(None)
+        self._parar_tocador()
+        self._queue.put(None)
+        self._worker.join(timeout=3.0)
+        if self._worker.is_alive():
+            log.warning("vozNativaDoDosvox: thread de sintese nao encerrou a tempo")
+        with self._vigia_cond:
+            self._vigia_parar = True
+            self._vigia_itens = []
+            self._vigia_cond.notify_all()
+        self._vigia.join(timeout=1.0)
+        with self._player_lock:
+            player = self._player
+            self._player = None
+        self._fechar_tocador(player)
+
+    # ---- o que o NVDA chama na thread principal -----------------------------
+
+    def speak(self, speechSequence):
+        # Nada de trabalho pesado aqui. A sequencia e' copiada como veio e a
+        # montagem dos segmentos (que envolve regex, normalizacao e resolucao
+        # de nomes de tecla) acontece na thread de sintese.
+        with self._state_lock:
+            if self._terminando:
+                return
+            self._cancel_event.clear()
+            geracao = self._generation
+        self._queue.put(("falar", list(speechSequence), geracao))
+
+    def cancel(self):
+        # Chamado pelo NVDA antes de praticamente toda fala nova, ou seja, uma
+        # vez por tecla digitada. Tudo aqui e' de custo constante.
+        #
+        # player.stop() continua sendo sincrono de proposito: e' ele que
+        # garante a ordem entre o cancelamento e o speak() que o NVDA faz logo
+        # em seguida, e e' ele que destrava a thread de sintese caso ela esteja
+        # esperando espaco no dispositivo de audio. O que saiu daqui foi o que
+        # podia bloquear de verdade: abrir dispositivo, mexer no motor e
+        # esperar o audio drenar.
+        with self._state_lock:
+            self._generation += 1
+            self._cancel_event.set()
+        self._descartar_fila()
+        self._desarmar_vigia(None)
+        self._parar_tocador()
+
+    def pause(self, switch):
+        with self._player_lock:
+            player = self._player
+        if player is None:
+            return
+        try:
+            player.pause(switch)
+        except Exception:
+            log.debugWarning("vozNativaDoDosvox: falha ao pausar", exc_info=True)
+
+    # ---- ajustes: sombra na thread principal, aplicacao na de sintese -------
+    #
+    # Os leitores devolvem uma sombra guardada aqui, que e' so' uma leitura de
+    # atributo. Os escritores enfileiram a mudanca como um comando na MESMA
+    # fila da fala, entao ela e' aplicada pela thread dona do motor, entre uma
+    # elocucao e outra. E' assim que trocar de banco de difones pelo anel de
+    # configuracoes deixou de poder acontecer no meio de uma sintese.
+
+    def _enfileirar_controle(self, funcao):
+        with self._state_lock:
+            if self._terminando:
+                return
+        self._queue.put(("ctl", funcao))
+
+    def _sincronizar_sombras(self):
+        sessao = self._sessao
+        self._variant = sessao.difones
+        self._cortafala = sessao.cortafala
+        self._rapidinho = sessao.rapidinho
+        self._acelerarLetras = sessao.letras_rapidas
+        self._reduzirVolume = sessao.reduzir_volume
+        self._interpal = sessao.interpal
+        self._cortefon = sessao.cortefon
+        self._sobrafon = sessao.sobrafon
+        self._pausaPonto = sessao.pausa_ponto
+        self._pausaVirgula = sessao.pausa_virgula
+        self._pausaDoisPontos = sessao.pausa_dois_pontos
+        # Usada pelo filtro, na thread principal, para as reticencias.
+        self._pausa_ponto_segundos = sessao.pausas.ponto
 
     def _get_availableVoices(self):
         return {
             voice_id: synthDriverHandler.VoiceInfo(voice_id, label)
-            for voice_id, label in get_available_voices(MODULE_DIR).items()
+            for voice_id, label in self._vozes.items()
         }
 
     def _get_voice(self):
         return self._voice
 
     def _set_voice(self, value):
-        if value in self.availableVoices:
+        if value in self._vozes:
             self._voice = value
 
     def _get_availableVariants(self):
         return {
             variant_id: synthDriverHandler.VoiceInfo(variant_id, label)
-            for variant_id, label in get_available_voice_variants(MODULE_DIR).items()
+            for variant_id, label in self._variantes.items()
         }
 
     def _get_variant(self):
-        return self._sessao.difones
+        return self._variant
 
     def _set_variant(self, value):
-        self._sessao.definir_difones(value)
+        if value not in self._variantes or value == self._variant:
+            return
+        self._variant = value
+        self._enfileirar_controle(lambda: self._sessao.definir_difones(value))
 
     def _get_cortafala(self):
-        return self._sessao.cortafala
+        return self._cortafala
 
     def _set_cortafala(self, value):
-        self._sessao.definir_cortafala(value)
+        value = bool(value)
+        if value == self._cortafala:
+            return
+        self._cortafala = value
+        self._enfileirar_controle(lambda: self._sessao.definir_cortafala(value))
 
     def _get_rapidinho(self):
-        return self._sessao.rapidinho
+        return self._rapidinho
 
     def _set_rapidinho(self, value):
         # O rapidinho nao mexe nas amostras: muda a TAXA em que elas sao tocadas
-        # (11025 -> 16537 Hz), como o wavePlay do Pascal. A sessao avisa quando
-        # a taxa mudou; so entao o dispositivo de audio precisa ser reaberto.
+        # (11025 -> 16537 Hz), como o wavePlay do Pascal. Trocar a taxa exige
+        # reabrir o dispositivo, entao a fala em curso e' interrompida (o que e'
+        # o esperado ao mexer num ajuste de voz) e o tocador novo nasce na taxa
+        # certa dentro da propria thread de sintese.
+        value = bool(value)
+        if value == self._rapidinho:
+            return
+        self._rapidinho = value
+        self.cancel()
+        self._enfileirar_controle(lambda: self._aplicar_rapidinho(value))
+
+    def _aplicar_rapidinho(self, value):
         if self._sessao.definir_rapidinho(value):
-            self._renovar_player_por_taxa()
+            self._recriar_player(self._output_device)
 
     def _get_acelerarLetras(self):
-        return self._sessao.letras_rapidas
+        return self._acelerarLetras
 
     def _set_acelerarLetras(self, value):
-        self._sessao.definir_letras_rapidas(value)
+        value = bool(value)
+        if value == self._acelerarLetras:
+            return
+        self._acelerarLetras = value
+        self._enfileirar_controle(lambda: self._sessao.definir_letras_rapidas(value))
 
     def _get_reduzirVolume(self):
-        return self._sessao.reduzir_volume
+        return self._reduzirVolume
 
     def _set_reduzirVolume(self, value):
-        self._sessao.definir_reduzir_volume(value)
+        value = bool(value)
+        if value == self._reduzirVolume:
+            return
+        self._reduzirVolume = value
+        self._enfileirar_controle(lambda: self._sessao.definir_reduzir_volume(value))
 
     def _get_interpal(self):
-        return self._sessao.interpal
+        return self._interpal
 
     def _set_interpal(self, value):
-        self._sessao.definir_interpal(value)
+        self._interpal = int(value)
+        self._enfileirar_controle(lambda: self._sessao.definir_interpal(value))
 
     def _get_cortefon(self):
-        return self._sessao.cortefon
+        return self._cortefon
 
     def _set_cortefon(self, value):
-        self._sessao.definir_cortefon(value)
+        self._cortefon = int(value)
+        self._enfileirar_controle(lambda: self._sessao.definir_cortefon(value))
 
     def _get_sobrafon(self):
-        return self._sessao.sobrafon
+        return self._sobrafon
 
     def _set_sobrafon(self, value):
-        self._sessao.definir_sobrafon(value)
+        self._sobrafon = int(value)
+        self._enfileirar_controle(lambda: self._sessao.definir_sobrafon(value))
 
     def _get_pausaPonto(self):
-        return self._sessao.pausa_ponto
+        return self._pausaPonto
 
     def _set_pausaPonto(self, value):
-        self._sessao.definir_pausa_ponto(value)
+        self._pausaPonto = int(value)
+        self._enfileirar_controle(lambda: self._definir_pausa("ponto", value))
 
     def _get_pausaVirgula(self):
-        return self._sessao.pausa_virgula
+        return self._pausaVirgula
 
     def _set_pausaVirgula(self, value):
-        self._sessao.definir_pausa_virgula(value)
+        self._pausaVirgula = int(value)
+        self._enfileirar_controle(lambda: self._definir_pausa("virgula", value))
 
     def _get_pausaDoisPontos(self):
-        return self._sessao.pausa_dois_pontos
+        return self._pausaDoisPontos
 
     def _set_pausaDoisPontos(self, value):
-        self._sessao.definir_pausa_dois_pontos(value)
+        self._pausaDoisPontos = int(value)
+        self._enfileirar_controle(lambda: self._definir_pausa("doispontos", value))
+
+    def _definir_pausa(self, qual, valor):
+        if qual == "ponto":
+            self._sessao.definir_pausa_ponto(valor)
+        elif qual == "virgula":
+            self._sessao.definir_pausa_virgula(valor)
+        else:
+            self._sessao.definir_pausa_dois_pontos(valor)
+        self._pausa_ponto_segundos = self._sessao.pausas.ponto
 
     def loadSettings(self, onlyChanged=False):
         # O NVDA chama isto ao carregar o sintetizador e ao trocar de perfil. A
-        # classe base leria do nvda.ini; nos lemos do dosvox.ini. Como as quatro
-        # opcoes tem useConfig=False, nao ha nada no nvda.ini para ler, e nao
-        # chamamos super() de proposito (em versoes do NVDA anteriores a 2023.1,
-        # super() ainda tentaria ler essas opcoes do nvda.ini e falharia).
-        if self._sessao.recarregar(forcar=True):
-            self._renovar_player_por_taxa()
-        # POReM: a loadSettings da classe base nao serve so para ler o nvda.ini.
-        # E' de dentro dela que o NVDA chama changeVoice(), e e' changeVoice()
-        # que reconstroi o anel de configuracoes para o sintetizador ATUAL (o
-        # updateSupportedSettings do synthSettingsRing), alem de carregar o
-        # dicionario de voz e disparar a notificacao synthChanged. Ao pular
-        # super() sem repor essa chamada, o anel nunca era reconstruido para
-        # este driver:
-        #   - ao TROCAR de outro sintetizador para este, o anel continuava
-        #     mostrando as definicoes do sintetizador anterior (ainda validas na
-        #     memoria do anel, por isso nenhum erro -- so as definicoes erradas);
-        #   - ao INICIAR o NVDA ja com este sintetizador ativo, nao havia anel
-        #     anterior nenhum, entao navegar pelas definicoes lancava um erro no
-        #     log e nada acontecia.
-        # Repor changeVoice() aqui e' exatamente o que a base faria pela voz, sem
-        # tocar no nvda.ini. self.voice e' sempre uma voz valida (definida no
-        # __init__ e filtrada por _set_voice), entao isto nao levanta o
-        # LookupError que a base trata para vozes invalidas; ainda assim,
-        # protegemos a chamada para que uma falha inesperada nunca impeca o
-        # sintetizador de carregar.
+        # classe base leria do nvda.ini; nos lemos do dosvox.ini, e a leitura
+        # vai para a thread dona do motor.
+        #
+        # Nao chamamos super() de proposito: como todas as opcoes tem
+        # useConfig=False, nao ha nada no nvda.ini para ler. POReM, e' de dentro
+        # do loadSettings da base que o NVDA chama changeVoice(), e e'
+        # changeVoice() que reconstroi o anel de configuracoes para o
+        # sintetizador atual. Sem repor essa chamada, o anel continuava
+        # mostrando as definicoes do sintetizador anterior, ou lancava erro
+        # quando nao havia anel anterior nenhum.
+        self._enfileirar_controle(self._recarregar_do_arquivo)
         try:
             synthDriverHandler.changeVoice(self, self.voice)
         except Exception:
@@ -853,20 +1076,219 @@ class SynthDriver(synthDriverHandler.SynthDriver):
             )
 
     def saveSettings(self):
-        # O NVDA chama isto ao confirmar o painel e ao salvar a configuracao. A
-        # sessao ja grava a cada mudanca, entao aqui nao ha nada a fazer -- mas o
-        # metodo precisa existir e nao pode chamar super(), que escreveria no
-        # nvda.ini.
+        # A sessao ja grava a cada mudanca. O metodo precisa existir e nao pode
+        # chamar super(), que escreveria no nvda.ini.
         pass
 
-    def _recarregar_dosvox_ini_se_mudou(self):
-        # Chamado no comeco de cada fala. Quando nada mudou, e' so um
-        # os.path.getmtime. E' isto que faz uma edicao do dosvox.ini no Bloco de
-        # Notas valer na fala seguinte, sem reiniciar o NVDA.
-        if self._sessao.recarregar():
-            self._renovar_player_por_taxa()
+    # ---- a thread de sintese ------------------------------------------------
 
-    def _get_configured_output_device(self):
+    def _run(self):
+        while True:
+            item = self._queue.get()
+            if item is None:
+                return
+            try:
+                tipo = item[0]
+                if tipo == "falar":
+                    self._falar(item[1], item[2])
+                elif tipo == "ctl":
+                    item[1]()
+                    self._sincronizar_sombras()
+            except Exception:
+                # _falar ja' garante, por conta propria, que os indices e o
+                # aviso de fim saem mesmo quando algo da errado la dentro.
+                log.error("vozNativaDoDosvox: erro na thread de sintese", exc_info=True)
+
+    def _falar(self, sequencia, geracao):
+        rastreador = _Rastreador(self, geracao)
+        entregue = False
+        total = 0
+        try:
+            if self._cancelado(geracao):
+                return
+            self._preparar_elocucao()
+            nivel = self._nivel_de_simbolos()
+            segmentos = self._montar_segmentos(sequencia)
+
+            buffer_saida = bytearray()
+            pendentes = 0
+            primeiro = True
+
+            def descarregar(final=False):
+                nonlocal pendentes, primeiro, total, entregue
+                dados = bytes(buffer_saida)
+                del buffer_saida[:]
+                if not dados:
+                    if final:
+                        # Elocucao sem audio nenhum (uma linha em branco na
+                        # leitura continua, por exemplo). Os indices saem na
+                        # hora, e a leitura segue sem esperar por um retorno de
+                        # chamada que nunca viria.
+                        rastreador.liberar(0, final=True)
+                        pendentes = 0
+                        entregue = True
+                    return True
+                quantos = pendentes
+                if final:
+                    ao_terminar = lambda: rastreador.liberar(quantos, final=True)
+                elif quantos:
+                    ao_terminar = lambda: rastreador.liberar(quantos)
+                else:
+                    ao_terminar = None
+                if not self._entregar(dados, geracao, ao_terminar):
+                    return False
+                pendentes = 0
+                primeiro = False
+                total += len(dados)
+                if final:
+                    entregue = True
+                return True
+
+            for tipo, valor in segmentos:
+                if self._cancelado(geracao):
+                    return
+                if tipo in ("index", "callback"):
+                    if tipo == "index":
+                        if valor is None:
+                            continue
+                        rastreador.registrar(lambda v=valor: self._avisar_indice(v))
+                    else:
+                        rastreador.registrar(lambda c=valor: self._executar_callback(c))
+                    pendentes += 1
+                    # Fecha o bloco aqui para que o evento caia o mais perto
+                    # possivel da posicao real do audio.
+                    if buffer_saida and not descarregar():
+                        return
+                    continue
+                for pcm in self._pcm(tipo, valor, nivel):
+                    if not pcm:
+                        continue
+                    if self._cancelado(geracao):
+                        return
+                    buffer_saida.extend(self._reduzir_volume_pcm(pcm) if self._reduzirVolume else pcm)
+                    if len(buffer_saida) >= (_PRIMEIRO_BLOCO if primeiro else _BLOCO_ALVO):
+                        if not descarregar():
+                            return
+            if self._cancelado(geracao):
+                return
+            descarregar(final=True)
+        finally:
+            if not entregue:
+                # Cancelamento, falha de entrega ou erro inesperado. Se foi
+                # cancelamento, isto nao notifica nada (o rastreador confere a
+                # geracao); em qualquer outro caso, os indices pendentes e o
+                # aviso de fim saem agora, e a leitura continua nao trava.
+                rastreador.forcar_fim()
+            elif total:
+                taxa = float(self._sample_rate or self._sessao.taxa_saida)
+                self._armar_vigia(rastreador, total / taxa + _FOLGA_DO_VIGIA)
+
+    def _preparar_elocucao(self):
+        # sintetiza (dvwin.pas) comeca sempre com "ultLetra := ' '" e
+        # "nrepUlt := 0": o contador do clique vale por elocucao.
+        self._sessao.comecar_elocucao()
+        agora = time.monotonic()
+        if agora - self._ultima_checagem_ini >= _INTERVALO_CHECAGEM_INI:
+            self._ultima_checagem_ini = agora
+            try:
+                if self._sessao.recarregar():
+                    self._sincronizar_sombras()
+            except Exception:
+                log.error("vozNativaDoDosvox: erro ao reler o dosvox.ini", exc_info=True)
+        dispositivo = self._dispositivo_configurado()
+        if dispositivo != self._output_device or self._sample_rate != self._sessao.taxa_saida:
+            self._recriar_player(dispositivo)
+
+    def _recarregar_do_arquivo(self):
+        if self._sessao.recarregar(forcar=True):
+            self._recriar_player(self._output_device)
+        self._ultima_checagem_ini = time.monotonic()
+
+    def _nivel_de_simbolos(self):
+        try:
+            return int(config.conf["speech"]["symbolLevel"])
+        except Exception:
+            return 300
+
+    def _pcm(self, tipo, valor, nivel):
+        if tipo == "pause":
+            yield self._sessao.silencio(valor)
+            return
+        if tipo == "character":
+            # O NVDA ja classificou este item como caractere ou tecla. Tenta
+            # primeiro o caminho de caractere RESOLVIDO: ele nao reaplica trim
+            # nem sanitizacao e, por isso, preserva o espaco literal (" ") e sua
+            # gravacao _32.WAV. Sem gravacao direta, usa o caminho normal.
+            caractere = resolver_caractere(valor)
+            pcm = self._sessao.falar_caractere_resolvido(caractere)
+            if pcm is None:
+                pcm = self._sessao.falar_caractere(caractere)
+            if pcm:
+                yield pcm
+            return
+        # Fatiamento da sessao: nunca corta palavra ao meio e prefere uma
+        # pontuacao natural. Cada trecho entra INTEIRO no streaming do motor.
+        for texto in self._sessao.trechos(valor):
+            yield from self._sessao.falar_em_fluxo(texto, symbol_level=nivel)
+
+    @staticmethod
+    def _reduzir_volume_pcm(pcm):
+        return bytes(128 + int((sample - 128) * 2 / 5) for sample in pcm)
+
+    # ---- entrega de audio ---------------------------------------------------
+
+    def _entregar(self, dados, geracao, ao_terminar):
+        tentativa = 0
+        while tentativa < _TENTATIVAS_DE_ENTREGA:
+            if self._cancelado(geracao):
+                return False
+            with self._player_lock:
+                player = self._player
+            if player is None:
+                return False
+            try:
+                player.feed(dados, len(dados), onDone=ao_terminar)
+                return True
+            except FileNotFoundError:
+                # O dispositivo de saida sumiu (fone desconectado, numero de
+                # placas mudou). Reabrir e insistir e' melhor do que perder o
+                # trecho, que e' o que a versao anterior fazia.
+                log.debugWarning(
+                    "vozNativaDoDosvox: dispositivo de audio indisponivel, reabrindo",
+                    exc_info=True,
+                )
+                self._recriar_player(self._dispositivo_configurado())
+            except TypeError:
+                # Compatibilidade defensiva com um tocador sem o parametro
+                # onDone. Entrega o audio e avisa na hora, como faz o driver do
+                # IBMTTS: melhor um indice alguns milissegundos adiantado do que
+                # um indice que nunca chega.
+                try:
+                    player.feed(dados)
+                except Exception:
+                    log.debugWarning(
+                        "vozNativaDoDosvox: falha ao entregar audio ao tocador",
+                        exc_info=True,
+                    )
+                    return False
+                if ao_terminar is not None:
+                    ao_terminar()
+                return True
+            except Exception:
+                if self._cancelado(geracao):
+                    return False
+                log.debugWarning(
+                    "vozNativaDoDosvox: falha ao entregar audio, tentando de novo",
+                    exc_info=True,
+                )
+                time.sleep(0.01)
+            tentativa += 1
+        log.error("vozNativaDoDosvox: desisti de entregar um bloco de audio")
+        return False
+
+    # ---- o tocador ----------------------------------------------------------
+
+    def _dispositivo_configurado(self):
         try:
             return config.conf["audio"]["outputDevice"]
         except Exception:
@@ -876,259 +1298,191 @@ class SynthDriver(synthDriverHandler.SynthDriver):
         except Exception:
             return None
 
-    def _create_player(self, output_device):
+    def _criar_player(self, dispositivo):
         # A taxa vem do motor: 11025 Hz, ou 16537 Hz com o rapidinho ligado.
-        # E' assim que o Dosvox acelera a fala -- tocando as mesmas amostras
-        # mais depressa, sem tocar no audio.
+        # E' assim que o Dosvox acelera a fala, tocando as mesmas amostras mais
+        # depressa, sem tocar no audio.
         self._sample_rate = self._sessao.taxa_saida
         kwargs = {
             "channels": 1,
             "samplesPerSec": self._sample_rate,
-            "bitsPerSample": 16,
-            "buffered": True,
+            "bitsPerSample": 8,
         }
-        if output_device is not None:
-            kwargs["outputDevice"] = output_device
-        try:
-            return nvwave.WavePlayer(**kwargs)
-        except TypeError:
-            kwargs.pop("buffered", None)
-            return nvwave.WavePlayer(**kwargs)
+        if dispositivo is not None:
+            kwargs["outputDevice"] = dispositivo
+        return nvwave.WavePlayer(**kwargs)
 
-    def _stop_player_instance(self, player):
+    def _recriar_player(self, dispositivo):
+        # So' e' chamado pela thread de sintese, e so' quando o tocador atual
+        # realmente nao serve mais: taxa diferente ou dispositivo diferente.
+        #
+        # Trocar de tocador descarta os retornos de chamada ainda pendentes do
+        # tocador velho, entao o trecho anterior e' encerrado a forca ANTES da
+        # troca. Sem isso, a leitura continua ficaria esperando um indice que
+        # morreu junto com o dispositivo antigo.
+        self._encerrar_vigiado_agora()
+        try:
+            novo = self._criar_player(dispositivo)
+        except Exception:
+            log.error("vozNativaDoDosvox: erro ao abrir o dispositivo de audio", exc_info=True)
+            return
+        with self._player_lock:
+            antigo = self._player
+            self._player = novo
+            self._output_device = dispositivo
+        self._fechar_tocador(antigo)
+
+    def _parar_tocador(self):
+        with self._player_lock:
+            player = self._player
+        if player is None:
+            return
+        try:
+            player.stop()
+        except Exception:
+            log.debugWarning("vozNativaDoDosvox: falha ao parar o tocador", exc_info=True)
+
+    def _fechar_tocador(self, player):
+        # A versao anterior so' chamava stop() e soltava a referencia, deixando
+        # o fluxo de audio vivo ate' o coletor de lixo do Python passar por ele.
+        if player is None:
+            return
         try:
             player.stop()
         except Exception:
             pass
-
-    def _stop_player_async(self, player):
-        threading.Thread(target=self._stop_player_instance, args=(player,), daemon=True).start()
-
-    def _reset_player_for_interrupt(self):
-        # ESTE E' O CAMINHO CRITICO DA DIGITACAO.
-        #
-        # O NVDA chama cancel() antes de praticamente toda fala nova -- e, ao
-        # digitar, isso e' UMA VEZ POR TECLA. Antes, cancel() construia um
-        # nvwave.WavePlayer NOVO toda vez, o que significa abrir um dispositivo
-        # de audio do sistema (WASAPI) do zero, de forma sincrona, na thread que
-        # o NVDA usa para falar. Abrir um dispositivo custa ordens de grandeza
-        # mais que sintetizar o caractere, e era isso, e nao a sintese, que
-        # fazia o teclado parecer pesado: entre bater a tecla e ouvir o som,
-        # esperava-se a abertura de um dispositivo de audio.
-        #
-        # O jeito normal de interromper e' player.stop(), que e' exatamente para
-        # isso: descarta o que estava na fila e deixa o mesmo objeto pronto para
-        # receber audio novo. Trocar o objeto so faz sentido quando ele nao
-        # serve mais -- ou seja, quando o dispositivo de saida mudou, ou quando
-        # a taxa mudou (rapidinho). Fora esses dois casos, reaproveitamos.
-        output_device = self._get_configured_output_device()
-        precisa_trocar = (
-            output_device != self._output_device
-            or self._sample_rate != self._sessao.taxa_saida
-        )
-        if not precisa_trocar:
-            self._stop_player()
-            return
-
         try:
-            new_player = self._create_player(output_device)
-        except Exception:
-            with self._player_lock:
-                old_player = self._player
-            self._stop_player_instance(old_player)
-            return
-        with self._player_lock:
-            old_player = self._player
-            self._player = new_player
-            self._output_device = output_device
-        self._stop_player_async(old_player)
-
-    def _stop_player(self):
-        with self._player_lock:
-            player = self._player
-        self._stop_player_instance(player)
-
-    def _discard_pending_speech(self):
-        while True:
-            try:
-                self._queue.get_nowait()
-            except queue.Empty:
-                break
-
-    def _interrupt_current_speech(self):
-        with self._state_lock:
-            self._generation += 1
-            self._cancel_event.set()
-        self._discard_pending_speech()
-        self._reset_player_for_interrupt()
-
-    def _queue_speech(self, segments):
-        with self._state_lock:
-            self._cancel_event.clear()
-            generation = self._generation
-        self._queue.put((segments, generation))
-
-    def _is_cancelled(self, generation):
-        with self._state_lock:
-            return self._cancel_event.is_set() or generation != self._generation
-
-    def _synthesize_pcm_chunks(self, segment_type, value, symbol_level):
-        if segment_type == "pause":
-            yield self._sessao.silencio(value)
-            return
-        if segment_type == "character":
-            # O NVDA ja classificou este item como caractere/tecla. Tenta primeiro
-            # o caminho de caractere RESOLVIDO do Kotlin: ele nao reaplica trim
-            # nem sanitizacao e, por isso, preserva o espaco literal (" ") e sua
-            # gravacao _32.WAV. Se nao houver gravacao direta, usa o caminho
-            # normal de caractere como fallback.
-            caractere = resolver_caractere(value)
-            pcm = self._sessao.falar_caractere_resolvido(caractere)
-            if pcm is None:
-                pcm = self._sessao.falar_caractere(caractere)
-            if pcm:
-                yield pcm
-            return
-
-        # Mantem o mesmo fatiamento de SessaoDosvox usado pelo servico Kotlin:
-        # nunca corta palavra ao meio e prefere uma pontuacao natural. Cada
-        # trecho entra INTEIRO no streaming do motor; dentro dele, as fronteiras
-        # do Cortafala sao apenas as do proprio mecanismo (sem flush por palavra).
-        for text_chunk in self._sessao.trechos(value):
-            yield from self._sessao.falar_em_fluxo(text_chunk, symbol_level=symbol_level)
-
-    def _notify_done(self):
-        try:
-            synthDriverHandler.synthDoneSpeaking.notify(synth=self)
+            player.close()
         except Exception:
             pass
 
-    @staticmethod
-    def _converter_pcm_para_saida(pcm, reduzir=False):
-        # Mesmo caminho do Android/Kotlin: o DOSVOX produz PCM unsigned de 8 bits,
-        # mas a saida recebe PCM signed de 16 bits little-endian. Sem reducao, o
-        # deslocamento de 8 bits e sem perda; com REDUZIRVOLUME, a conta e feita
-        # em 16 bits e truncada em direcao a zero, exatamente como Kotlin/Java.
-        if not pcm:
-            return pcm
-        out = bytearray(len(pcm) * 2)
-        j = 0
-        if reduzir:
-            for sample in pcm:
-                amplitude = int((((sample - 128) << 8) * 2) / 5)
-                valor = amplitude & 0xFFFF
-                out[j] = valor & 0xFF
-                out[j + 1] = (valor >> 8) & 0xFF
-                j += 2
-        else:
-            for sample in pcm:
-                amplitude = (sample - 128) << 8
-                valor = amplitude & 0xFFFF
-                out[j] = valor & 0xFF
-                out[j + 1] = (valor >> 8) & 0xFF
-                j += 2
-        return bytes(out)
+    # ---- estado de cancelamento ---------------------------------------------
 
-    def _feed_pcm(self, pcm, generation, on_done=None):
-        if not pcm:
-            if on_done:
-                on_done()
-            return True
-        if self._is_cancelled(generation):
-            return False
-        self._sync_output_device()
-        with self._player_lock:
-            player = self._player
-        if self._is_cancelled(generation):
-            return False
-        pcm = self._converter_pcm_para_saida(pcm, self._sessao.reduzir_volume)
-        try:
-            player.feed(pcm, onDone=on_done)
-        except TypeError:
-            # Versoes antigas do NVDA nao aceitam onDone; sem ele, o NVDA
-            # nao tem como saber quando o audio realmente terminou de
-            # tocar, entao avisamos na hora, como antes (comportamento
-            # antigo, sujeito ao mesmo bug de leitura continua).
-            player.feed(pcm)
-            if on_done:
-                on_done()
-        except Exception:
-            return False
-        return not self._is_cancelled(generation)
+    def _cancelado(self, geracao):
+        with self._state_lock:
+            return self._cancel_event.is_set() or geracao != self._generation
 
-    def _renovar_player_por_taxa(self):
-        # O tocador e' aberto com uma taxa fixa; ligar ou desligar o rapidinho
-        # muda essa taxa (11025 <-> 16537 Hz), entao ele precisa ser reaberto.
-        # cancel() ja faz exatamente isso -- _reset_player_for_interrupt cria um
-        # tocador novo, e _create_player le a taxa atual do motor --, alem de
-        # interromper a fala em curso, que e' o esperado ao mexer numa
-        # configuracao de voz.
-        if self._player is None or self._sample_rate == self._sessao.taxa_saida:
-            # Durante a construcao ainda nao ha tocador; ele ja vai nascer na
-            # taxa certa, porque _create_player le a taxa do motor.
-            return
-        self.cancel()
-
-    def _renovar_player_sem_interromper(self):
-        # So e chamado depois que o trecho atual ja terminou de tocar (ver
-        # _run), entao trocar o player aqui nao corta nem engasga nada --
-        # e so a mesma troca que ja fazemos ao mudar de dispositivo de
-        # saida, so que por iniciativa propria, para evitar acumulo de
-        # estado interno em leituras continuas muito longas.
-        try:
-            novo_player = self._create_player(self._output_device)
-        except Exception:
-            return
-        with self._player_lock:
-            player_antigo = self._player
-            self._player = novo_player
-        self._stop_player_async(player_antigo)
-
-    def _sync_output_device(self):
-        output_device = self._get_configured_output_device()
-        if output_device == self._output_device:
-            return
-        with self._player_lock:
-            if output_device == self._output_device:
-                return
+    def _descartar_fila(self):
+        # Esvazia a fila de FALA, mas preserva os comandos de ajuste e o
+        # sentinela de encerramento: cancelar a fala nao pode engolir uma troca
+        # de variante que o usuario acabou de pedir.
+        guardados = []
+        while True:
             try:
-                self._player.stop()
-            except Exception:
-                pass
-            self._player = self._create_player(output_device)
-            self._output_device = output_device
-            log.debug("vozNativaDoDosvox outputDevice=%r", output_device)
+                item = self._queue.get_nowait()
+            except queue.Empty:
+                break
+            if item is None or item[0] == "ctl":
+                guardados.append(item)
+        for item in guardados:
+            self._queue.put(item)
 
-    def speakCharacter(self, character, index=None):
-        resolved = resolve_named_key(character.strip()) if isinstance(character, str) else None
-        if resolved is not None:
-            kind, value = resolved
-            if kind == "character":
-                segments = [("character", value)]
-                if index is not None:
-                    segments.append(("index", index))
-                self._queue_speech(segments)
+    # ---- notificacoes ao NVDA ------------------------------------------------
+
+    def _avisar_indice(self, indice):
+        try:
+            synthDriverHandler.synthIndexReached.notify(synth=self, index=indice)
+        except Exception:
+            # Registrado, e nao apenas ignorado: e' este aviso que a leitura
+            # continua usa para acompanhar a posicao do cursor no texto. Uma
+            # falha muda aqui seria indistinguivel, para quem usa o NVDA, de a
+            # leitura simplesmente parar sozinha.
+            log.error(
+                "vozNativaDoDosvox: erro ao notificar synthIndexReached",
+                exc_info=True,
+            )
+
+    def _executar_callback(self, comando):
+        try:
+            if hasattr(comando, "run"):
+                comando.run()
+            elif callable(getattr(comando, "callback", None)):
+                comando.callback()
+        except Exception:
+            log.error("vozNativaDoDosvox: erro executando CallbackCommand", exc_info=True)
+
+    def _avisar_fim(self):
+        try:
+            synthDriverHandler.synthDoneSpeaking.notify(synth=self)
+        except Exception:
+            log.error(
+                "vozNativaDoDosvox: erro ao notificar synthDoneSpeaking",
+                exc_info=True,
+            )
+
+    # ---- o vigia -------------------------------------------------------------
+    #
+    # Uma unica thread, que dorme quase o tempo todo. Nada de criar um
+    # temporizador por elocucao: numa leitura continua isso seria uma thread
+    # nova por frase.
+    #
+    # Ela acompanha uma LISTA, e nao um trecho so'. Com a fala fluindo sem
+    # interrupcao, a thread de sintese ja' pode estar preparando o trecho
+    # seguinte enquanto o anterior ainda toca, entao mais de um trecho pode
+    # estar esperando o seu aviso de fim ao mesmo tempo. Guardar so' o ultimo
+    # deixaria o anterior sem rede.
+
+    def _armar_vigia(self, rastreador, segundos):
+        if rastreador.terminado:
+            return
+        with self._vigia_cond:
+            if self._vigia_parar:
                 return
-            if kind == "fkey":
-                segments = [("character", "F")]
-                segments.extend(("character", digit) for digit in value)
-                if index is not None:
-                    segments.append(("index", index))
-                self._queue_speech(segments)
-                return
-        segments = [("character", character)]
-        if index is not None:
-            segments.append(("index", index))
-        self._queue_speech(segments)
+            self._vigia_itens.append((time.monotonic() + segundos, rastreador))
+            self._vigia_cond.notify_all()
 
+    def _desarmar_vigia(self, rastreador):
+        with self._vigia_cond:
+            if rastreador is None:
+                self._vigia_itens = []
+            else:
+                self._vigia_itens = [
+                    item for item in self._vigia_itens if item[1] is not rastreador
+                ]
+            self._vigia_cond.notify_all()
 
+    def _encerrar_vigiado_agora(self):
+        with self._vigia_cond:
+            vencidos = self._vigia_itens
+            self._vigia_itens = []
+            self._vigia_cond.notify_all()
+        self._encerrar_a_forca(vencidos, avisar=False)
 
+    def _encerrar_a_forca(self, itens, avisar=True):
+        # A ordem importa: os trechos sao encerrados na mesma ordem em que
+        # foram falados, para que os indices cheguem ao NVDA em ordem.
+        for _prazo, rastreador in itens:
+            if rastreador.terminado:
+                continue
+            if avisar:
+                log.debugWarning(
+                    "vozNativaDoDosvox: o tocador nao avisou o fim de um trecho; "
+                    "liberando os eventos pendentes para nao travar a leitura"
+                )
+            rastreador.forcar_fim()
 
+    def _vigia_loop(self):
+        while True:
+            with self._vigia_cond:
+                while not self._vigia_itens and not self._vigia_parar:
+                    self._vigia_cond.wait()
+                if self._vigia_parar:
+                    return
+                agora = time.monotonic()
+                proximo = min(prazo for prazo, _r in self._vigia_itens)
+                if proximo > agora:
+                    self._vigia_cond.wait(proximo - agora)
+                    continue
+                ultimo = max(
+                    indice
+                    for indice, (prazo, _r) in enumerate(self._vigia_itens)
+                    if prazo <= agora
+                )
+                vencidos = self._vigia_itens[: ultimo + 1]
+                del self._vigia_itens[: ultimo + 1]
+            self._encerrar_a_forca(vencidos)
 
-    def _rewrite_short_sequences(self, segments):
-        # Ordinary speech has no reliable metadata saying whether a written
-        # symbol name originated from punctuation, so other text is retained.
-        return segments
+    # ---- do que o NVDA entrega ate' os segmentos de audio --------------------
 
     def _append_special_segments(self, segments, text, e_todo_o_texto):
         # A ajuda de teclado do NVDA manda o nome da tecla como texto seguido de
@@ -1137,21 +1491,17 @@ class SynthDriver(synthDriverHandler.SynthDriver):
         #
         # O PROBLEMA: dois espacos no fim nao sao exclusividade da ajuda de
         # teclado. O NVDA separa com espaco os trechos de um texto formatado
-        # (negrito, link, italico), e um trecho pode facilmente chegar aqui como
-        # "hifen  ". Quando isso acontecia, a palavra virava a GRAVACAO do traco.
+        # (negrito, link, italico), e um trecho pode chegar aqui como "hifen  ".
+        # Quando isso acontecia, a palavra virava a GRAVACAO do traco.
         #
-        # A regra e' a mesma do _preserve_source_symbols, e agora vale em TODOS
-        # os caminhos: so troque uma palavra pela gravacao se ela for TODO o
-        # texto da elocucao. O nome de uma tecla, na ajuda de teclado, e'
-        # exatamente isso. Uma palavra no meio de uma frase, nunca.
+        # A regra e' a mesma do _preserve_source_symbols: so troque uma palavra
+        # pela gravacao se ela for TODO o texto da elocucao.
         if e_todo_o_texto and isinstance(text, str) and text.endswith("  "):
             stripped = text.strip()
             resolved = resolve_named_key(stripped) if stripped else None
             if resolved is not None:
                 kind, value = resolved
                 if kind == "character":
-                    log.debug("vozNativaDoDosvox: %r -> gravacao de %r (ajuda de teclado)"
-                              % (text, value))
                     segments.append(("character", value))
                     return
                 if kind == "fkey":
@@ -1160,12 +1510,11 @@ class SynthDriver(synthDriverHandler.SynthDriver):
                     return
         segments.append(("text", text))
 
-    def speak(self, speechSequence):
+    def _montar_segmentos(self, speechSequence):
         segments = []
         character_mode = False
         # Quantos itens de TEXTO esta elocucao tem. Uma palavra so pode virar a
-        # gravacao de um simbolo se for o texto inteiro -- ver
-        # _append_special_segments e _preserve_source_symbols.
+        # gravacao de um simbolo se for o texto inteiro.
         e_todo_o_texto = sum(1 for x in speechSequence if isinstance(x, str)) == 1
         for item in speechSequence:
             if isinstance(item, str):
@@ -1189,163 +1538,99 @@ class SynthDriver(synthDriverHandler.SynthDriver):
                     self._append_special_segments(segments, item, e_todo_o_texto)
                 continue
 
-            class_name = item.__class__.__name__
-            if class_name == "DosvoxSourceSymbolCommand":
+            if isinstance(item, DosvoxSourceSymbolCommand):
                 segments.append(("character", item.character))
-            elif class_name == "BreakCommand":
-                # Pausa de verdade, inserida exatamente aqui na sequencia,
-                # nao acumulada para o final (isso quebrava a posicao de
-                # toda pausa, inclusive a dos parenteses).
+            elif isinstance(item, BreakCommand):
+                # Pausa de verdade, inserida exatamente aqui na sequencia, nao
+                # acumulada para o final (isso quebrava a posicao de toda pausa,
+                # inclusive a dos parenteses).
                 time_ms = max(0, int(getattr(item, "time", 0)))
                 if time_ms:
                     segments.append(("pause", time_ms / 1000.0))
-            elif class_name == "IndexCommand":
+            elif isinstance(item, IndexCommand):
                 # Fica intercalado na mesma sequencia dos segmentos de fala,
-                # para o retorno de chamada do audio disparar o indice no
-                # ponto certo, e nao todos de uma vez no comeco da fala.
+                # para o indice disparar no ponto certo do audio, e nao todos de
+                # uma vez no comeco da fala.
                 segments.append(("index", getattr(item, "index", None)))
             elif isinstance(item, CallbackCommand):
-                # A leitura continua do NVDA (NVDA+A) usa isso para saber
-                # quando pode buscar e falar o proximo trecho: precisa ser
-                # chamado exatamente quando o audio ate aqui de fato
-                # terminou de tocar, nunca antes.
                 segments.append(("callback", item))
-            elif class_name == "CharacterModeCommand":
+            elif isinstance(item, CharacterModeCommand):
                 character_mode = bool(
                     getattr(item, "state", getattr(item, "enable", getattr(item, "enabled", False)))
                 )
-        segments = self._rewrite_short_sequences(segments)
-        has_real_content = any(value for kind, value in segments if kind not in ("index", "callback"))
-        has_sync_markers = any(kind in ("index", "callback") for kind, value in segments)
-        if not segments or (not has_real_content and not has_sync_markers):
-            self._notify_done()
-            return
-        self._queue_speech(segments)
+        return segments
 
-    def cancel(self):
-        self._interrupt_current_speech()
-        self._sessao.comecar_elocucao()
-        self._trechos_desde_renovacao_player = 0
-        self._notify_done()
+    # ---- o filtro, que roda na thread principal do NVDA ----------------------
 
-    def pause(self, switch):
-        with self._player_lock:
-            if hasattr(self._player, "pause"):
-                self._player.pause(switch)
+    def _preserve_source_symbols(self, speech_sequence):
+        """Marca os simbolos de verdade enquanto eles ainda diferem dos nomes
+        escritos.
 
-    def terminate(self):
+        Este e' o unico codigo deste complemento que roda na thread principal do
+        NVDA, e ele roda para TODA fala, inclusive a cada tecla digitada. Por
+        isso cada etapa aqui comeca por uma rejeicao barata: quando nao ha nada
+        a fazer, que e' a esmagadora maioria das vezes, a sequencia sai como
+        entrou sem nenhum laco em bytecode Python.
+        """
         try:
-            filter_speechSequence.unregister(self._preserve_source_symbols)
+            if synthDriverHandler.getSynth() is not self:
+                return speech_sequence
         except Exception:
             pass
-        with self._state_lock:
-            self._generation += 1
-            self._cancel_event.set()
-        self._queue.put(None)
-        self._reset_player_for_interrupt()
-
-    def _fire_events(self, events):
-        for kind, value in events:
-            if kind == "index":
-                if value is not None:
-                    try:
-                        synthDriverHandler.synthIndexReached.notify(synth=self, index=value)
-                    except Exception:
-                        pass
-            elif kind == "callback":
-                # CallbackCommand: e assim que a leitura continua do NVDA
-                # (NVDA+A) sabe que pode buscar e falar o proximo trecho.
-                try:
-                    if hasattr(value, "run"):
-                        value.run()
-                    elif callable(getattr(value, "callback", None)):
-                        value.callback()
-                except Exception:
-                    log.error("vozNativaDoDosvox: erro executando CallbackCommand", exc_info=True)
-
-    def _make_chunk_callback(self, chunk_events):
-        def _callback():
-            self._fire_events(chunk_events)
-        return _callback
-
-    def _wait_for_playback_completion(self):
-        # player.sync() bloqueia ate o audio ja entregue realmente terminar
-        # de tocar, e nesse meio tempo garante que os retornos de chamada
-        # pendentes (onDone) sejam disparados. Rodar isso aqui, na propria
-        # thread de trabalho, e mais confiavel do que depender so do
-        # retorno de chamada do ultimo pedaco, que pode nao disparar em
-        # certos casos (por exemplo, um pedaco so de silencio).
-        with self._player_lock:
-            player = self._player
+        speech_sequence = _juntar_itens_da_sequencia(speech_sequence)
         try:
-            if hasattr(player, "sync"):
-                player.sync()
+            symbol_level = int(config.conf["speech"]["symbolLevel"])
         except Exception:
-            pass
-
-    def _run(self):
-        while True:
-            item = self._queue.get()
-            if item is None:
-                return
-            segments, generation = item
-            if self._is_cancelled(generation):
+            symbol_level = 300
+        marked = []
+        character_mode = False
+        total = len(speech_sequence)
+        text_item_count = sum(1 for item in speech_sequence if isinstance(item, str))
+        for index, item in enumerate(speech_sequence):
+            if isinstance(item, CharacterModeCommand):
+                character_mode = bool(
+                    getattr(item, "state", getattr(item, "enable", getattr(item, "enabled", False)))
+                )
+                marked.append(item)
                 continue
-            # sintetiza (dvwin.pas) comeca sempre com "ultLetra := ' '" e
-            # "nrepUlt := 0": o contador do clique vale por elocucao. Sem este
-            # reset, uma linha terminada em virgula somava com a seguinte.
-            self._sessao.comecar_elocucao()
-            self._recarregar_dosvox_ini_se_mudou()
-            try:
-                try:
-                    symbol_level = int(config.conf["speech"]["symbolLevel"])
-                except Exception:
-                    symbol_level = 300
-                # Sintetiza tudo primeiro, guardando quais indices e
-                # retornos de chamada (CallbackCommand, usado pela leitura
-                # continua do NVDA+A) caem depois de qual pedaco de audio:
-                # assim o retorno de chamada de cada pedaco dispara tudo no
-                # ponto certo, nunca antes do audio ate ali realmente tocar.
-                pcm_chunks = []
-                pending_events = []
-                for kind, value in segments:
-                    if self._is_cancelled(generation):
-                        break
-                    if kind in ("index", "callback"):
-                        pending_events.append((kind, value))
-                        continue
-                    for pcm in self._synthesize_pcm_chunks(kind, value, symbol_level):
-                        if not pcm:
-                            continue
-                        pcm_chunks.append([pcm, pending_events])
-                        pending_events = []
-                if pending_events:
-                    if pcm_chunks:
-                        pcm_chunks[-1][1] = pcm_chunks[-1][1] + pending_events
-                    else:
-                        self._fire_events(pending_events)
-                if self._is_cancelled(generation) or not pcm_chunks:
-                    self._notify_done()
+            if not isinstance(item, str) or character_mode:
+                marked.append(item)
+                continue
+            # QUANDO UMA PALAVRA E' O NOME DE UM SIMBOLO, E QUANDO NAO E'.
+            #
+            # Ao soletrar um simbolo digitado, o NVDA nao manda o caractere:
+            # manda o NOME dele, ja traduzido. Este filtro precisa reconhecer
+            # esse nome e devolver o caractere, para que a voz toque a GRAVACAO
+            # em vez de sintetizar a palavra. O sinal que o NVDA da e' que o
+            # nome vem seguido de um EndUtteranceCommand -- mas isso sozinho nao
+            # basta, porque o NVDA parte uma linha em varios pedacos sempre que
+            # a formatacao muda, e uma frase que por acaso termina em "hifen"
+            # cairia na mesma condicao.
+            #
+            # A regra certa e' a que o Dosvox precisa e nada alem dela: so troque
+            # se a palavra for TODO o texto da elocucao.
+            if (
+                text_item_count == 1
+                and index + 1 < total
+                and isinstance(speech_sequence[index + 1], EndUtteranceCommand)
+                and item.strip() == item
+                and not _esta_entre_aspas(speech_sequence, index, total)
+            ):
+                resolved = resolve_named_key(item)
+                if resolved is not None and resolved[0] == "character":
+                    marked.append(DosvoxSourceSymbolCommand(resolved[1]))
                     continue
-                spoke = False
-                for pcm, chunk_events in pcm_chunks:
-                    if self._is_cancelled(generation):
-                        break
-                    on_done = self._make_chunk_callback(chunk_events)
-                    if self._feed_pcm(pcm, generation, on_done):
-                        spoke = True
-                    else:
-                        break
-                if self._is_cancelled(generation):
-                    # cancel()/terminate() ja avisam por conta propria.
+            item = _normalizar_fragmentos_de_caixa_mista(item)
+            for word_kind, word_value in split_literal_symbols(item, self._pausa_ponto_segundos):
+                if word_kind == "character":
+                    marked.append(DosvoxSourceSymbolCommand(word_value))
                     continue
-                if spoke:
-                    self._wait_for_playback_completion()
-                    self._trechos_desde_renovacao_player += 1
-                    if self._trechos_desde_renovacao_player >= RENOVAR_PLAYER_A_CADA:
-                        self._trechos_desde_renovacao_player = 0
-                        self._renovar_player_sem_interromper()
-                self._notify_done()
-            except Exception:
-                log.error("vozNativaDoDosvox: erro ao sintetizar fala", exc_info=True)
-                self._notify_done()
+                if word_kind == "pause":
+                    marked.append(BreakCommand(time=int(word_value * 1000)))
+                    continue
+                for kind, value in split_source_symbols(word_value, symbol_level):
+                    if kind == "symbol":
+                        marked.append(DosvoxSourceSymbolCommand(value))
+                    elif value:
+                        marked.append(value)
+        return marked

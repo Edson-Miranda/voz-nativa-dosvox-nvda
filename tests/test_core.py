@@ -22,7 +22,7 @@ def _manifest_value(field):
 
 def test_manifest_and_package_metadata():
     assert _manifest_value("name") == "vozNativaDoDosvox"
-    assert _manifest_value("version") == "2.1.1"
+    assert _manifest_value("version") == "2.2.0"
     manifest = (ROOT / "manifest.ini").read_text(encoding="utf-8")
     assert "1993" in manifest
     assert "edson.demiranda.melo@gmail.com" in manifest
