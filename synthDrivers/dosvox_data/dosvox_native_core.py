@@ -1,12 +1,89 @@
 # -*- coding: UTF-8 -*-
 import collections
 import configparser
-from decimal import Decimal
 import os
 import re
 import struct
 import unicodedata
 import wave
+
+
+_CACHE_MISS = object()
+
+
+def _lru_get(cache, key):
+    try:
+        value = cache.pop(key)
+    except KeyError:
+        return _CACHE_MISS
+    cache[key] = value
+    return value
+
+
+def _lru_put(cache, key, value, max_items):
+    cache.pop(key, None)
+    cache[key] = value
+    while len(cache) > max_items:
+        cache.popitem(last=False)
+    return value
+
+
+class _CacheDeBytes:
+    """Cache de menos-usado-recentemente limitado por BYTES, nao por numero de
+    itens.
+
+    O limite por numero de itens e' enganoso quando os valores guardados tem
+    tamanhos muito diferentes: 512 gravacoes de letra ocupam uns poucos
+    megabytes, mas 512 trechos de fala inteiros ocupam dezenas. Contar bytes
+    da' um teto de memoria previsivel, que e' o que importa num programa que
+    fica aberto o dia inteiro.
+    """
+
+    __slots__ = ("_itens", "_orcamento", "_total")
+
+    def __init__(self, orcamento):
+        self._itens = collections.OrderedDict()
+        self._orcamento = int(orcamento)
+        self._total = 0
+
+    def get(self, key):
+        try:
+            value = self._itens.pop(key)
+        except KeyError:
+            return None
+        self._itens[key] = value
+        return value
+
+    def put(self, key, value, tamanho=None):
+        antigo = self._itens.pop(key, None)
+        if antigo is not None:
+            self._total -= self._tamanho_de(antigo)
+        if tamanho is None:
+            tamanho = self._tamanho_de(value)
+        self._itens[key] = value
+        self._total += tamanho
+        while self._total > self._orcamento and self._itens:
+            _, descartado = self._itens.popitem(last=False)
+            self._total -= self._tamanho_de(descartado)
+        return value
+
+    @staticmethod
+    def _tamanho_de(value):
+        if value is None or value is False:
+            return 32
+        if isinstance(value, (list, tuple)):
+            return sum(len(parte) for parte in value) + 64
+        try:
+            return len(value) + 64
+        except TypeError:
+            return 64
+
+    def clear(self):
+        self._itens.clear()
+        self._total = 0
+
+    def __len__(self):
+        return len(self._itens)
 
 
 # TUDO o que o nucleo le mora dentro de UMA pasta so: dosvox_data. Difones,
@@ -422,19 +499,35 @@ DIRECT_CHARACTER_SOUND_KEYS = {
     "]": ("_93", "_vo93"),
 }
 
+_NORMALIZE_TRANS = str.maketrans({
+    "\u2018": "'",
+    "\u2019": "'",
+    "\u201c": '"',
+    "\u201d": '"',
+    "\u2013": "-",
+    "\u2014": "-",
+    "\u2212": "-",
+    "\u00a0": " ",
+})
+
+# Os oito caracteres que a tabela acima troca. Verificar a presenca de
+# qualquer um deles com um "in" (busca em C) e' mais barato do que chamar
+# translate, que sempre aloca uma string nova. Na esmagadora maioria das
+# falas nenhum deles aparece.
+_NORMALIZE_ALVOS_RE = re.compile("[\u2018\u2019\u201c\u201d\u2013\u2014\u2212\u00a0]")
+
+
 def normalize_text(text):
-    text = unicodedata.normalize("NFC", text)
-    replacements = {
-        "\u2018": "'",
-        "\u2019": "'",
-        "\u201c": '"',
-        "\u201d": '"',
-        "\u2013": "-",
-        "\u2014": "-",
-        "\u2212": "-",
-        "\u00a0": " ",
-    }
-    return "".join(replacements.get(ch, ch) for ch in text)
+    # Antes: unicodedata.normalize seguido de um "".join sobre um gerador que
+    # consultava um dicionario para CADA caractere -- um laco interpretado
+    # sobre a linha inteira, em todo trecho falado. Agora as duas etapas sao
+    # feitas em codigo C, e ambas sao puladas quando nao ha nada a fazer,
+    # que e' o caso comum.
+    if not unicodedata.is_normalized("NFC", text):
+        text = unicodedata.normalize("NFC", text)
+    if _NORMALIZE_ALVOS_RE.search(text):
+        return text.translate(_NORMALIZE_TRANS)
+    return text
 
 
 def _eh_invisivel(character):
@@ -469,10 +562,38 @@ class DescricoesCP1252:
                     self.mapa[ord(key)] = value
         except OSError:
             pass
+        self._seguro_re = self._montar_regex_de_seguros()
+
+    def _montar_regex_de_seguros(self):
+        """Monta a classe de caracteres que passa INTACTA por aplicar().
+
+        Um caractere e' seguro quando nao e' invisivel, nao tem descricao
+        propria no dicionario e existe na CP1252. Para um texto formado so por
+        caracteres seguros, aplicar() devolveria exatamente o mesmo texto --
+        entao nao ha' razao para percorrer a string caractere a caractere em
+        bytecode Python. Uma unica varredura em C decide isso, e ela cobre
+        praticamente toda a fala de um dia de uso.
+        """
+        seguros = []
+        for cp in range(0x20, 0x100):
+            ch = chr(cp)
+            if cp in self.mapa:
+                continue
+            if _eh_invisivel(ch):
+                continue
+            if cp1252_code(ch) is None:
+                continue
+            seguros.append(ch)
+        seguros.extend(ch for ch in "\t\n\r" if ord(ch) not in self.mapa)
+        if not seguros:
+            return None
+        return re.compile("^[" + re.escape("".join(seguros)) + "]*$")
 
     def aplicar(self, texto_in):
         texto = normalize_text(texto_in)
         if not texto:
+            return texto
+        if self._seguro_re is not None and self._seguro_re.match(texto):
             return texto
         invisiveis = [_eh_invisivel(ch) for ch in texto]
         if any(invisiveis) and all(invisiveis):
@@ -541,23 +662,73 @@ def _wave_compact_block(pmem, size, fator=1):
     d1, d2, d3 = 200 * fator, 80 * fator, 50 * fator
     if size <= d1 + d2 + d3:
         return size
-    maximo = 0
-    posmax = 0
-    for i in range(d1, min(d1 + d2 + d3, size - 1) + 1):
-        if pmem[i] > maximo:
-            maximo, posmax = pmem[i], i
+
+    def maior_amostra(inicio, fim_exclusivo, posmax_atual):
+        # Substitui o laco original ("for i in range(...): if pmem[i] >
+        # maximo: maximo, posmax = pmem[i], i") por max()/index() sobre a
+        # fatia. A diferenca nao e' o QUE se calcula, e sim ONDE: o laco
+        # manual roda em bytecode Python, avaliando e comparando um byte
+        # de cada vez; max()/index() percorrem a mesma fatia em codigo C,
+        # dentro do proprio interpretador. O resultado devolvido e'
+        # IDENTICO ao do laco original:
+        #   - mesmo criterio de comparacao estrita (>, nao >=);
+        #   - mesmo desempate (o PRIMEIRO indice que atinge o maior valor
+        #     vence, ja' que bytearray.index() tambem devolve a primeira
+        #     ocorrencia);
+        #   - se nenhuma amostra da janela superar zero (equivalente ao
+        #     "maximo = 0" reiniciado antes de cada busca no original),
+        #     usa-se o fim da janela em vez de ficar parado -- e aqui o
+        #     comportamento teve que ser diferente do laco original;
+        #     o motivo esta' explicado a seguir.
+        #
+        #     O laco original, nesse mesmo caso (nenhum byte > 0 na janela),
+        #     deixava "posmax" parado no valor de antes. Isso e' inofensivo
+        #     quase sempre, porque nao existe difone real cuja janela inteira
+        #     seja zero -- silencio de verdade e' codificado como 128, nao
+        #     como 0. MAS, testando esta funcao com um bloco de bytes
+        #     propositalmente todo zerado, veio a tona que essa mesma "posicao
+        #     parada" do laco original TRAVA O LACO DE FORA PARA SEMPRE: se
+        #     "posmax" nunca avanca, "origem" tambem nunca avanca, e a
+        #     condicao do "while" continua verdadeira indefinidamente -- ou
+        #     seja, se um bloco assim aparecesse por qualquer motivo (um
+        #     arquivo de difone corrompido, por exemplo), a fala travaria de
+        #     vez, consumindo um nucleo do processador para sempre, sem
+        #     nenhum comando do NVDA sendo capaz de destravar (o cancelamento
+        #     so' e' verificado ENTRE trechos, nunca dentro deste laco). Isto
+        #     nao e' um comportamento autentico do Dosvox original que valha a
+        #     pena preservar -- e' uma falha de robustez que ja' existia e
+        #     que, ao ser encontrada durante os testes desta otimizacao,
+        #     precisou ser corrigida: agora a posicao sempre avanca ate' o
+        #     fim da janela, garantindo que o laco de fora sempre progride.
+        janela = pmem[inicio:fim_exclusivo]
+        if janela:
+            maior = max(janela)
+            if maior > 0:
+                return inicio + janela.index(maior)
+            return fim_exclusivo - 1
+        return posmax_atual
+
+    posmax = maior_amostra(d1, min(d1 + d2 + d3, size - 1) + 1, 0)
     origem = destino = posmax
+    # Com a correcao de maior_amostra acima, "origem" agora sempre avanca
+    # pelo menos 2*d2 a cada volta deste laco, nao importa o conteudo dos
+    # bytes -- entao o numero de voltas e' sempre no maximo "size / (2*d2)",
+    # umas poucas dezenas mesmo no maior bloco (MAXBUFSIZE_CORTAFALA). Ainda
+    # assim, este teto fica aqui como segunda rede de seguranca, bem
+    # generosa e barata (uma comparacao de inteiros a mais por volta): se
+    # algum ajuste futuro neste trecho voltar a permitir que "origem" fique
+    # parado, a fala perde um pedacinho do audio deste bloco em vez de
+    # travar para sempre.
+    voltas = 0
+    limite_de_voltas = size + 1
     while origem < size - 2 * (d2 + d3):
-        maximo = 0
+        voltas += 1
+        if voltas > limite_de_voltas:
+            break
         origem += d2
-        for i in range(origem, min(origem + d3, size - 1) + 1):
-            if pmem[i] > maximo:
-                maximo, posmax = pmem[i], i
+        posmax = maior_amostra(origem, min(origem + d3, size - 1) + 1, posmax)
         origem = posmax
-        maximo = 0
-        for i in range(origem + d2, min(origem + d2 + d3, size - 1) + 1):
-            if pmem[i] > maximo:
-                maximo, posmax = pmem[i], i
+        posmax = maior_amostra(origem + d2, min(origem + d2 + d3, size - 1) + 1, posmax)
         tam = posmax - origem + 1
         snap = pmem[origem:origem + tam]
         pmem[destino:destino + tam] = snap
@@ -759,20 +930,13 @@ def escrever_dosvox_ini(caminho_ini, config):
 
 
 def garantir_dosvox_ini(caminho_ini):
-    """Cria o dosvox.ini se ele faltar, e o reescreve no formato atual se o que
-    estiver la nao for este formato -- inclusive um arquivo dos tempos dos cinco
-    niveis, que e' simplesmente descartado, ja que nao ha mais niveis nem
-    CORTEFON nem SOBRAFON para migrar. Devolve True se escreveu."""
-    chaves = _todas_as_chaves(caminho_ini)
-    if chaves is None:
-        escrever_dosvox_ini(caminho_ini, CONFIG_PADRAO)
-        return True
-    esperadas = {chave_ini for _, chave_ini in LINHAS_DOSVOX_INI}
-    if not esperadas.issubset(chaves):
-        escrever_dosvox_ini(caminho_ini, ler_dosvox_ini(caminho_ini))
-        return True
-    return False
-
+    """Cria o arquivo com os padrões de fábrica somente se ele não existir.
+    Um INI já existente é sempre preservado, inclusive durante uma atualização.
+    Devolve True somente quando criou o arquivo."""
+    if os.path.exists(caminho_ini):
+        return False
+    escrever_dosvox_ini(caminho_ini, CONFIG_PADRAO)
+    return True
 
 def split_hundreds(value):
     if value == 0:
@@ -1140,8 +1304,13 @@ class DifonesEngine:
         self.sobrafon = 0
         self.units = {}
         self._dif_data = b""
-        self._unit_cache = {}
-        self._clipped_unit_cache = {}
+        # O banco inteiro ja' esta na memoria. O cache antigo de unidades
+        # guardava COPIAS de fatias dele, duplicando ate' um megabyte a toa.
+        # Uma memoryview aponta para os mesmos bytes sem copiar nada, entao o
+        # cache de unidades deixou de existir e o de recortes passou a guardar
+        # apenas vistas, que custam algumas dezenas de bytes cada uma.
+        self._dif_view = None
+        self._clipped_unit_cache = collections.OrderedDict()
         self._load_index()
 
     def _load_index(self):
@@ -1149,6 +1318,7 @@ class DifonesEngine:
             data = file_obj.read()
         with open(self.dif_path, "rb") as file_obj:
             self._dif_data = file_obj.read()
+        self._dif_view = memoryview(self._dif_data)
         for i in range(0, len(data), 15):
             entry = data[i : i + 15]
             if len(entry) < 15:
@@ -1164,10 +1334,7 @@ class DifonesEngine:
         if name not in self.units:
             return None
         offset, length = self.units[name]
-        data = self._unit_cache.get(name)
-        if data is None:
-            data = self._dif_data[offset : offset + length]
-            self._unit_cache[name] = data
+        data = self._dif_view[offset : offset + length]
         # CORTEFON/SOBRAFON de falaDifone (dvinter.pas), restaurado. Numa silaba
         # ATONA (forte=False) cujo NOME de difone tem mais de dois caracteres,
         # tira-se CORTEFON amostras do FIM da gravacao, respeitando o piso
@@ -1187,16 +1354,38 @@ class DifonesEngine:
             tam = bruto - self.cortefon
             if tam < self.sobrafon:
                 tam = bruto if bruto < self.sobrafon else self.sobrafon
-        tam = max(0, int(Decimal(tam) * Decimal(max(0.0, perc))))
+        if perc != 1.0:
+            # Antes: int(Decimal(tam) * Decimal(max(0.0, perc))). Decimal
+            # existe em Python para aritmetica decimal EXATA (a que
+            # interessa para dinheiro, por exemplo), e por isso e' dezenas
+            # de vezes mais lenta que uma multiplicacao de float comum --
+            # ela precisa converter cada operando para uma representacao
+            # decimal de precisao arbitraria antes de multiplicar. Essa
+            # troca custava caro exatamente aqui: get_unit_audio roda para
+            # CADA difone sintetizado, entao esse custo se multiplicava por
+            # todo som gerado.
+            #
+            # A troca por float nao perde precisao real: perc ja' chega
+            # aqui como float (0.6, 0.7, 0.9 ou produtos entre eles), e o
+            # Pascal original tambem multiplicava usando ponto flutuante
+            # binario (o tipo "real" do Pascal e' isso), nao decimal exato
+            # -- ou seja, float e' o que mais se aproxima do calculo
+            # original, e nao o contrario. A unica diferenca possivel entre
+            # esta linha e a versao com Decimal e' um desvio de, no maximo,
+            # UMA amostra (menos de 0,1 milissegundo a 11025 Hz) num difone
+            # ocasional, dentro do arredondamento que a propria trunc() do
+            # Pascal ja' fazia -- inaudivel, e sem nenhuma mudanca na regra
+            # que decide o corte.
+            tam = int(tam * max(0.0, perc))
+        tam = max(0, tam)
         cache_key = (name, tam)
-        cached = self._clipped_unit_cache.get(cache_key)
-        if cached is not None:
+        cached = _lru_get(self._clipped_unit_cache, cache_key)
+        if cached is not _CACHE_MISS:
             return cached
         clipped = data[:tam]
-        if len(self._clipped_unit_cache) > 512:
-            self._clipped_unit_cache.clear()
-        self._clipped_unit_cache[cache_key] = clipped
-        return clipped
+        # Cada entrada e' uma memoryview (dezenas de bytes), nao uma copia do
+        # audio, entao cabe guardar muito mais combinacoes de nome e tamanho.
+        return _lru_put(self._clipped_unit_cache, cache_key, clipped, 8192)
 
     def synthesize(self, unit_names, cortafala=False, rapidinho=False):
         # O CORTAFALA E' APLICADO POR BUFFER, NAO NA FALA INTEIRA.
@@ -1358,6 +1547,7 @@ class RegrasParser:
     def __init__(self, rgr_path, exc_path=None):
         self.rules_by_first = collections.defaultdict(list)
         self.exceptions = {}
+        self.text_expansions = {}
         self.vog_maiuscula = set("AEIOU")
         self.vog_minuscula = set("aeiou")
         self.vogal = self.vog_maiuscula | self.vog_minuscula
@@ -1376,6 +1566,10 @@ class RegrasParser:
             for line in file_obj:
                 raw = line.rstrip("\r\n")
                 if not raw:
+                    continue
+                if "=>" in raw:
+                    key, value = raw.split("=>", 1)
+                    self.text_expansions[key.lower()] = value
                     continue
                 texto = raw + "|=|"
                 i_igual = texto.find("=")
@@ -1799,10 +1993,17 @@ class DosvoxNativeSynth:
         self.letters_dir = self.letters_dir_normal
         self._letter_sound_map = self._letter_sound_map_normal
         self._ascii_sound_map = self._ascii_sound_map_normal
-        self._wav_cache = {}
-        self._phoneme_cache = {}
-        self._text_pcm_cache = {}
-        self._character_pcm_cache = {}
+        # Orcamentos de memoria, em bytes. Somados, sao cerca de 14 MB no pior
+        # caso, e so' chegam la' depois de muito uso. Antes os limites eram por
+        # NUMERO de itens, o que deixava o teto real indefinido.
+        self._wav_cache = _CacheDeBytes(3 * 1024 * 1024)
+        self._phoneme_cache = collections.OrderedDict()
+        self._text_pcm_cache = _CacheDeBytes(2 * 1024 * 1024)
+        self._character_pcm_cache = _CacheDeBytes(3 * 1024 * 1024)
+        # O caminho de streaming (o unico que o driver do NVDA usa para texto)
+        # nao tinha cache nenhum: reler a mesma linha ressintetizava tudo do
+        # zero. Guarda a LISTA de buffers ja prontos de cada trecho.
+        self._stream_cache = _CacheDeBytes(6 * 1024 * 1024)
         self.engine = DifonesEngine(ind_path, dif_path)
         self.engine.cortefon = self.CORTEFON_PADRAO
         self.engine.sobrafon = self.SOBRAFON_PADRAO
@@ -1828,6 +2029,11 @@ class DosvoxNativeSynth:
         self.g2p = RegrasParser(rules_path, exc_path)
         self.descricoes = DescricoesCP1252(descricoes_path)
 
+    def _limpar_caches_de_pcm(self):
+        self._text_pcm_cache.clear()
+        self._character_pcm_cache.clear()
+        self._stream_cache.clear()
+
     def definir_banco(self, voice_id):
         if voice_id == self._voice_id:
             return
@@ -1838,21 +2044,18 @@ class DosvoxNativeSynth:
         novo.sobrafon = self.engine.sobrafon
         self.engine = novo
         self._voice_id = voice_id
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     def definir_pausas(self, pausas):
         if pausas == self.pausas:
             return
         self.pausas = pausas
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     def definir_interpal(self, interpal):
         self.interpal = max(0, min(INTERPAL_MAX, int(interpal)))
         self.intervalo_segundos = self.interpal / TAXA_BASE
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     def _interpal_amostras(self):
         # silencio (dvinter.pas) escreve "espaco div 100" blocos de 100
@@ -1867,15 +2070,13 @@ class DosvoxNativeSynth:
         # recorte do motor de difones quanto o de PCM montado.
         self.engine.cortefon = max(0, min(CORTEFON_MAX, int(cortefon)))
         self.engine._clipped_unit_cache.clear()
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     def definir_sobrafon(self, sobrafon):
         # Piso de amostras que o corte de CORTEFON deve deixar sobrar.
         self.engine.sobrafon = max(0, min(SOBRAFON_MAX, int(sobrafon)))
         self.engine._clipped_unit_cache.clear()
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     def definir_cortafala(self, ativo):
         # O cortafala era o unico dos tres ajustes que NAO morava aqui: o driver
@@ -1889,8 +2090,7 @@ class DosvoxNativeSynth:
         if ativo == self.cortafala:
             return
         self.cortafala = ativo
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     def definir_rapidinho(self, ativo):
         # Unico lugar que liga/desliga o rapidinho. Ele NAO mexe nas amostras:
@@ -1901,8 +2101,7 @@ class DosvoxNativeSynth:
         if ativo == self.rapidinho:
             return
         self.rapidinho = ativo
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     @property
     def taxa_saida(self):
@@ -2065,8 +2264,7 @@ class DosvoxNativeSynth:
             self.letters_dir = self.letters_dir_normal
             self._letter_sound_map = self._letter_sound_map_normal
             self._ascii_sound_map = self._ascii_sound_map_normal
-        self._text_pcm_cache.clear()
-        self._character_pcm_cache.clear()
+        self._limpar_caches_de_pcm()
 
     def _read_letter_wav(self, path, allow_truncated=False):
         cache_key = (path, bool(allow_truncated))
@@ -2080,19 +2278,16 @@ class DosvoxNativeSynth:
                     or wav_file.getsampwidth() != 1
                     or wav_file.getframerate() != 11025
                 ):
-                    self._wav_cache[cache_key] = False
+                    self._wav_cache.put(cache_key, False)
                     return None
                 pcm = wav_file.readframes(wav_file.getnframes())
                 expected_len = wav_file.getnframes() * wav_file.getnchannels() * wav_file.getsampwidth()
                 if len(pcm) < expected_len and not allow_truncated:
-                    self._wav_cache[cache_key] = False
+                    self._wav_cache.put(cache_key, False)
                     return None
-                if len(self._wav_cache) > 512:
-                    self._wav_cache.clear()
-                self._wav_cache[cache_key] = pcm
-                return pcm
+                return self._wav_cache.put(cache_key, pcm)
         except Exception:
-            self._wav_cache[cache_key] = False
+            self._wav_cache.put(cache_key, False)
             return None
 
     def _get_direct_sound_by_keys(self, keys, allow_truncated=False):
@@ -2334,6 +2529,19 @@ class DosvoxNativeSynth:
                 if handled:
                     continue
 
+            expansao = self.g2p.text_expansions.get(token.lower())
+            if expansao is not None:
+                # @ separa um trecho fonético literal de um trecho de texto.
+                # Exemplo: @/g/I/ /t/||Rãb preserva “guit” e processa Rãb
+                # como a segunda palavra, portanto com R forte.
+                if expansao.startswith("@") and "||" in expansao:
+                    fonemas, texto_expandido = expansao[1:].split("||", 1)
+                    units.extend(self.map_phonemes_to_units(fonemas))
+                    units.extend(self.units_from_text(texto_expandido, symbol_level=symbol_level))
+                else:
+                    units.extend(self.units_from_text(expansao, symbol_level=symbol_level))
+                continue
+
             preparada = self.g2p.preparar_palavra_completa(token)
             if not self.g2p.tem_vogal(preparada[0]):
                 for letra in preparada[0]:
@@ -2351,23 +2559,17 @@ class DosvoxNativeSynth:
 
     def _phonetize_word(self, token, preparada=None):
         key = token.lower()
-        cached = self._phoneme_cache.get(key)
-        if cached is not None:
+        cached = _lru_get(self._phoneme_cache, key)
+        if cached is not _CACHE_MISS:
             return cached
         ph = self.g2p.phonetize_word(token, preparada=preparada)
-        if len(self._phoneme_cache) > 2048:
-            self._phoneme_cache.clear()
-        self._phoneme_cache[key] = ph
-        return ph
+        return _lru_put(self._phoneme_cache, key, ph, 2048)
 
     def _get_cached_pcm(self, cache, key):
         return cache.get(key)
 
-    def _put_cached_pcm(self, cache, key, pcm, max_items=512):
-        if len(cache) > max_items:
-            cache.clear()
-        cache[key] = pcm
-        return pcm
+    def _put_cached_pcm(self, cache, key, pcm):
+        return cache.put(key, pcm)
 
     def units_from_character(self, character):
         if not character:
@@ -2407,8 +2609,35 @@ class DosvoxNativeSynth:
         text = self.descricoes.aplicar(text)
         if not text:
             return
+        # O resultado depende do contador do clique, que e' estado vivo do
+        # motor. Em vez de desistir de guardar qualquer texto com pontuacao
+        # (o que sao quase todos), o contador de ENTRADA entra na chave e o de
+        # SAIDA e' guardado junto com o audio. Um acerto de cache reproduz o
+        # audio e repoe o contador exatamente onde a sintese o teria deixado,
+        # entao o cache e' indistinguivel de sintetizar de novo.
+        estado_entrada = (self._ultimo_simbolo_repetido, self._repeticoes_simbolo)
+        chave = (text, int(symbol_level), estado_entrada)
+        guardado = self._stream_cache.get(chave)
+        if guardado is not None:
+            prontos, estado_saida = guardado
+            self._ultimo_simbolo_repetido, self._repeticoes_simbolo = estado_saida
+            yield from prontos
+            return
         units = self.units_from_text(text, symbol_level=symbol_level)
-        yield from self.engine.synthesize_streaming(units, cortafala=self.cortafala, rapidinho=self.rapidinho)
+        # Emite cada buffer assim que fica pronto (a latencia do primeiro som
+        # continua a mesma) e so' depois guarda a lista inteira, para a proxima
+        # leitura da mesma linha sair de graca. Navegar para cima e para baixo
+        # pelo mesmo texto e' o padrao de uso mais comum que existe.
+        prontos = []
+        total = 0
+        for buffer_pronto in self.engine.synthesize_streaming(
+            units, cortafala=self.cortafala, rapidinho=self.rapidinho
+        ):
+            prontos.append(buffer_pronto)
+            total += len(buffer_pronto)
+            yield buffer_pronto
+        estado_saida = (self._ultimo_simbolo_repetido, self._repeticoes_simbolo)
+        self._stream_cache.put(chave, (prontos, estado_saida), tamanho=total + 256)
 
     def synthesize_character(self, character):
         sanitized = self.descricoes.aplicar(character).strip()
@@ -2535,15 +2764,36 @@ def get_available_voices(module_dir):
 # Pedaco maximo de texto entregue de uma vez ao sintetizador. Nao e' uma
 # limitacao do motor: e' latencia. Falar comeca assim que o primeiro pedaco
 # esta pronto, em vez de esperar a frase inteira ficar pronta.
-TAMANHO_TRECHO_PADRAO = 40
+TAMANHO_TRECHO_PADRAO = 220
+
+# O PRIMEIRO pedaco de uma fala longa e' curto de proposito: e' o unico que o
+# ouvinte espera antes de ouvir qualquer coisa. Os seguintes sao grandes,
+# porque sao preparados enquanto o anterior ainda toca e, sendo maiores,
+# cortam o custo fixo por pedaco e reduzem o numero de entregas ao dispositivo
+# de audio. Fatiar tudo em 40 caracteres, como antes, nao comprava latencia
+# nenhuma (a sintese roda centenas de vezes mais rapido que o tempo real) e so'
+# multiplicava trabalho.
+TAMANHO_PRIMEIRO_TRECHO = 60
 
 DOSVOX_INI_NOME = "dosvox.ini"
 
 
+# Compiladas uma vez, e nao a cada trecho falado: re.findall e re.search com
+# padrao em string reconsultam o cache interno do modulo re toda vez.
+_PALAVRA_COM_ESPACO_RE = re.compile(r"\S+\s*", re.UNICODE)
+_FIM_DE_FRASE_RE = re.compile(r"[.!?;:]\s*$", re.UNICODE)
+
+
 class SessaoDosvox:
-    def __init__(self, pasta_raiz, tamanho_trecho=TAMANHO_TRECHO_PADRAO):
+    def __init__(
+        self,
+        pasta_raiz,
+        tamanho_trecho=TAMANHO_TRECHO_PADRAO,
+        tamanho_primeiro_trecho=TAMANHO_PRIMEIRO_TRECHO,
+    ):
         self.pasta_raiz = pasta_raiz
         self.tamanho_trecho = tamanho_trecho
+        self.tamanho_primeiro_trecho = tamanho_primeiro_trecho
         self.caminho_ini = os.path.join(pasta_raiz, VOICE_DIR_NAME, DOSVOX_INI_NOME)
         self.criou_o_ini = garantir_dosvox_ini(self.caminho_ini)
 
@@ -2556,7 +2806,7 @@ class SessaoDosvox:
         self.config = dict(CONFIG_PADRAO)
         self.recarregar(forcar=True)
 
-    # ---- os quatro ajustes -------------------------------------------------
+    # ---- os tres ajustes ---------------------------------------------------
 
     @property
     def difones(self):
@@ -2644,10 +2894,8 @@ class SessaoDosvox:
         self.gravar()
 
     def definir_reduzir_volume(self, valor):
-        # Como no Android, e uma opcao de saida: nao altera o motor nem seus caches.
         self.config["reduzir_volume"] = bool(valor)
         self.gravar()
-
 
     def definir_interpal(self, valor):
         self.config["interpal"] = max(0, min(INTERPAL_MAX, int(valor)))
@@ -2731,8 +2979,7 @@ class SessaoDosvox:
         self.limpar_cache()
 
     def limpar_cache(self):
-        self.motor._text_pcm_cache.clear()
-        self.motor._character_pcm_cache.clear()
+        self.motor._limpar_caches_de_pcm()
 
     # ---- falar -------------------------------------------------------------
 
@@ -2750,24 +2997,27 @@ class SessaoDosvox:
         pausa natural -- assim a emenda entre um pedaco e o seguinte nao se
         ouve. Porte literal do que estava no driver do NVDA."""
         texto = str(texto or "")
-        if len(texto) <= self.tamanho_trecho:
+        limite = min(self.tamanho_primeiro_trecho, self.tamanho_trecho)
+        if len(texto) <= limite:
             if texto:
                 yield texto
             return
         atual = []
         tamanho = 0
-        for palavra in re.findall(r"\S+\s*", texto, re.UNICODE):
+        for palavra in _PALAVRA_COM_ESPACO_RE.findall(texto):
             n = len(palavra)
-            if atual and tamanho + n > self.tamanho_trecho:
+            if atual and tamanho + n > limite:
                 yield "".join(atual)
                 atual = []
                 tamanho = 0
+                limite = self.tamanho_trecho
             atual.append(palavra)
             tamanho += n
-            if tamanho >= 20 and re.search(r"[.!?;:]\s*$", palavra, re.UNICODE):
+            if tamanho >= 20 and _FIM_DE_FRASE_RE.search(palavra):
                 yield "".join(atual)
                 atual = []
                 tamanho = 0
+                limite = self.tamanho_trecho
         if atual:
             yield "".join(atual)
 
