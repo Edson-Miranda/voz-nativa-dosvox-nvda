@@ -1,0 +1,5 @@
+Private, unmodified copy of configparser.py from CPython 3.11.9.
+Source: Python standard library, https://github.com/python/cpython
+Copyright Python Software Foundation and contributors.
+Distributed under the licenses in PYTHON_LICENSE.txt.
+Used only when the host does not provide configparser.
