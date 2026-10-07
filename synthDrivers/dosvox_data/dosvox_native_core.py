@@ -1,6 +1,13 @@
 # -*- coding: UTF-8 -*-
 import collections
-import configparser
+try:
+    import configparser
+except ModuleNotFoundError as error:
+    if error.name != "configparser":
+        raise
+    # NVDA 2024 omite este modulo da biblioteca Python empacotada.
+    # A copia privada preserva a mesma leitura do INI sem alterar sys.path.
+    from . import _configparser as configparser
 import os
 import re
 import struct
